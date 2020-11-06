@@ -20,5 +20,5 @@ module.exports = {
   mailchimpAudienceId: process.env.MAILCHIMP_AUDIENCE_ID || '36599652f2',
   mailchimpContactStatus: process.env.MAILCHIMP_CONTACT_STATUS || 'subscribed',
   mailchimpTagsPath: '{"watch": "users", "tags": ["meta", "role"], "email": "email"}',
-  mailchimpMergeFieldPath: '{"watch": "users", "mergeFields": {"FNAME": "firstName", "PHONE": "phoneNumber"}, "email": "email"}',
+  mailchimpMergeFieldPath: '{"watch": "users", "mergeFields": {"FNAME": "firstName", "PHONE": "phoneNumber", "ROLE": "role"}, "email": "email"}',
 };

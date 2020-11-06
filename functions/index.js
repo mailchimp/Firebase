@@ -164,64 +164,60 @@ exports.handleMergeFields = functions.firestore.document('users/{userId}')
     functions.logger.log(context);
     try {
       // Deserialize User Input Watch Paths
-      const watchPaths = JSON.parse(config.mailchimpTagsPath);
+      const watchPaths = JSON.parse(config.mailchimpMergeFieldPath);
 
       // Validation
-      if (!watchPaths.tags) {
+      if (!watchPaths.mergeFields) {
+        return null;
+      }
+      if (!watchPaths.watch) {
+        functions.logger.log('A watch field must be specified to listen for collection events');
         return null;
       }
       if (!watchPaths.email) {
-        functions.logger.log('An email field must be specified for the mailchimp subscriber')
+        functions.logger.log('An email field must be specified for the mailchimp subscriber');
         return null;
       }
-      if (!Array.isArray(watchPaths.tags)) {
-        functions.logger.log('Tags must be an array')
+      if (!_.isObject(watchPaths.mergeFields)) {
+        functions.logger.log('Merge Fields config must be an array');
         return null;
       }
 
       // Get snapshot of document before & after write event
       const prevDoc = event && event.before && event.before.data();
+      functions.logger.log('prevDoc'); functions.logger.log(prevDoc);
       const newDoc = event && event.after && event.after.data();
+      functions.logger.log('newDoc'); functions.logger.log(newDoc);
 
-      // Determine all the tags prior to write event
-      const prevTags = prevDoc && watchPaths.tags.reduce((acc, tag) => {
-        const prevTags = _.get(prevDoc, tag);
-        if (Array.isArray(prevTags) && prevTags && prevTags.length) {
-          acc = [...acc, ...prevTags];
-        } else if (prevTags) {
-          acc = acc.concat(prevTags);
+      // Determine all the merge prior to write event
+      const mergeFieldsToUpdate = prevDoc && Object.entries(watchPaths.mergeFields).reduce((acc, [mergeFieldName, docFieldName]) => {
+        functions.logger.log('mergeFieldName'); functions.logger.log(mergeFieldName);
+        functions.logger.log('docFieldName'); functions.logger.log(docFieldName);
+        const prevMergeFieldVaue = _.get(prevDoc, docFieldName);
+        functions.logger.log('prevMergeFieldVaue'); functions.logger.log(prevMergeFieldVaue);
+        // lookup the same field value in new snapshot
+        const newMergeFieldValue = _.get(newDoc, docFieldName);
+        functions.logger.log('newMergeFieldValue'); functions.logger.log(newMergeFieldValue);
+        // if delta exists, then update accumulator collection
+        if (prevMergeFieldVaue !== newMergeFieldValue) {
+          acc[mergeFieldName] = newMergeFieldValue;
         }
         return acc;
-      }, []);
-
-      // Determine all the tags after write event
-      const nextTags = newDoc && watchPaths.tags.reduce((acc, tag) => {
-        const nextTags = _.get(newDoc, tag);
-        if (Array.isArray(nextTags) && nextTags && nextTags.length) {
-          acc = [...acc, ...nextTags];
-        } else if (nextTags) {
-          acc = acc.concat(nextTags);
-        }        
-        return acc;
-      }, []);
+      }, {});
   
-      functions.logger.log('prevTags'); functions.logger.log(prevTags);
-      functions.logger.log('nextTags'); functions.logger.log(nextTags);
+      functions.logger.log('mergeFieldsToUpdate'); functions.logger.log(mergeFieldsToUpdate);
 
-      // Determine the delta/difference/intersection of old/new tags
-      const removeTags = (prevTags || []).filter(tag => !(nextTags || []).includes(tag)).map(tag => ({ name: tag, status: 'inactive' }));
-      const addTags = (nextTags || []).filter(tag => !(prevTags || []).includes(tag)).map(tag => ({ name: tag, status: 'active' }));
-      const tags = [...removeTags, ...addTags];
-      functions.logger.log('removeTags'); functions.logger.log(removeTags);
-      functions.logger.log('addTags'); functions.logger.log(addTags);
-      functions.logger.log('tags'); functions.logger.log(tags);
-  
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = crypto.createHash("md5").update(newDoc.email).digest("hex");    
+      const subscriberHash = crypto.createHash("md5").update(newDoc[watchPaths.email]).digest("hex");    
   
+      const params = {
+        email_address: newDoc[watchPaths.email],
+        merge_fields: mergeFieldsToUpdate
+      };
+
       // Invoke mailchimp API with updated tags
-      if (tags && tags.length) {
-        const result = await mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}/tags`, { tags });
+      if (!_.isEmpty(mergeFieldsToUpdate)) {
+        const result = await mailchimp.put(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}`, params);
         functions.logger.log(result);
       }
     } catch (e) {
