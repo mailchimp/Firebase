@@ -1,0 +1,17 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+firebase-debug.log*
+firebase-debug.*.log*
+functions/*.log*
+
+# Compiled binary addons (http://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+functions/node_modules/
+
+.vscode
