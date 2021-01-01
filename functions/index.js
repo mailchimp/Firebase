@@ -237,3 +237,61 @@ if (config.mailchimpMergeFieldPath) {
       }
     });
 }
+
+if (config.mailchimpMemberEventsPath) {
+  exports.handleListMemberEvents = functions.firestore.document(config.mailchimpMemberEventsPath.watch)
+  .onWrite(async (event, context) => {
+    functions.logger.log(context);
+    try {
+      // Deserialize User Input Watch Paths
+      const watchPaths = config.mailchimpMemberEventsPath;
+
+      // Validation
+      if (!watchPaths.events) {
+        return null;
+      }
+      if (!watchPaths.watch) {
+        functions.logger.log('A watch field must be specified to listen for collection events');
+        return null;
+      }
+      if (!watchPaths.email) {
+        functions.logger.log('An email field must be specified for the mailchimp subscriber');
+        return null;
+      }
+      if (!Array.isArray(watchPaths.events)) {
+        functions.logger.log('Events config must be an array');
+        return null;
+      }
+
+      // Get snapshot of document before & after write event
+      const newDoc = event && event.after && event.after.data();
+      functions.logger.log('newDoc'); functions.logger.log(newDoc);
+
+      const memberEventsToCreate = watchPaths.events.reduce((acc, key) => {
+        functions.logger.log('key'); functions.logger.log(key);
+        const mailchimpEventName = _.get(newDoc, key)
+        functions.logger.log('mailchimpEventName'); functions.logger.log(mailchimpEventName);
+        // acc = Array.isArray(mailchimpEventName) ? acc.concat(mailchimpEventName) : acc.push(mailchimpEventName);
+        acc = Array.isArray(mailchimpEventName) ? acc = [...acc, ...mailchimpEventName] : acc.concat(mailchimpEventName);
+        return acc;
+      }, []);
+      functions.logger.log('memberEventsToCreate'); functions.logger.log(memberEventsToCreate);
+
+      // Compute the mailchimp subscriber email hash
+      const subscriberHash = crypto.createHash("md5").update(newDoc[watchPaths.email]).digest("hex");
+
+      // Invoke mailchimp API with updated tags
+      if (!_.isEmpty(memberEventsToCreate)) {
+        const requests = memberEventsToCreate.reduce((acc, name) => {
+          console.log('name', name);
+          acc.push(mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}/events`, { name }));
+          return acc;
+        }, []);
+        const result = await Promise.all(requests);
+        functions.logger.log(result);
+      }
+    } catch (e) {
+      functions.logger.log(e);
+    }
+  });  
+}
