@@ -50,3 +50,9 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
 * **addUserToList:** Listens for new user accounts (as managed by Firebase Authentication), then automatically adds the new user to your specified MailChimp audience.
 
 * **removeUserFromList:** Listens for existing user accounts to be deleted (as managed by Firebase Authentication), then automatically removes them from your specified MailChimp audience.
+
+* **handleTags:**
+
+* **handleMergeFields:**
+
+* **handleListMemberEvents:**

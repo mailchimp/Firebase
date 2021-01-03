@@ -2,7 +2,6 @@ const crypto = require('crypto');
 const _ = require('lodash');
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-// @ts-ignore incorrect typescript typings
 const Mailchimp = require('mailchimp-api-v3');
 
 let config = require('./config');
@@ -14,104 +13,127 @@ logs.init();
 
 let mailchimp;
 try {
+  // Create a new Mailchimp object instance
   mailchimp = new Mailchimp(config.mailchimpApiKey);
+
+  // Functions must point to a document to trigger
+  // Thus, a specific id (users/marie) or wildcard (users/{userId}) must be specified
+  // https://firebase.google.com/docs/firestore/extend-with-functions#wildcards-parameters
+  const VALID_COLLECTION_NAME = /[a-zA-Z]+\/{[a-zA-Z]+}/g;
+
+  // extension.yml receives seralized JSON inputs representing configuration settings for merge fields, tags, and custom events
+  // the following code deserializes the JSON inputs and builds a configuration object with each custom setting path (tags, merge fields, custom events) at the root.
   config = Object.entries(config).reduce((acc, [key,value]) => {
+    const logError = message => {
+      functions.logger.log(message);
+      return acc;
+    }
     if (key.includes('Path')) {
-      acc[key] = JSON.parse(config[key]);
+      const parsedConfig = JSON.parse(config[key]);
+      if (!parsedConfig.watch) {
+        logError(`${key} requires a property named 'watch'`);
+      }
+      if (!parsedConfig.email) {
+        logError(`${key} requires a property named 'email'`);
+      }
+      console.log('testing', parsedConfig.watch);
+      if (!VALID_COLLECTION_NAME.test(parsedConfig.watch)) {
+        logError(`${key} requires a property named 'watch' with a specific/wildcard param defined i.e (1) users/marie (2) users/{userId}`);
+      }
+      acc[key] = parsedConfig;
     } else {
       acc[key] = value;
     }
     return acc;
   }, {});
-  console.log('parsed config ==>', config)
 } catch (err) {
   logs.initError(err);
 }
 
-// exports.addUserToList = functions.handler.auth.user.onCreate(
-//   async (user) => {
-//     logs.start();
+exports.addUserToList = functions.handler.auth.user.onCreate(
+  async (user) => {
+    logs.start();
 
-//     if (!mailchimp) {
-//       logs.mailchimpNotInitialized();
-//       return;
-//     }
+    if (!mailchimp) {
+      logs.mailchimpNotInitialized();
+      return;
+    }
 
-//     const { email, uid } = user;
-//     if (!email) {
-//       logs.userNoEmail();
-//       return;
-//     }
+    const { email, uid } = user;
+    if (!email) {
+      logs.userNoEmail();
+      return;
+    }
 
-//     try {
-//       logs.userAdding(uid, config.mailchimpAudienceId);
-//       const results = await mailchimp.post(
-//         `/lists/${config.mailchimpAudienceId}/members`,
-//         {
-//           email_address: email,
-//           status: config.mailchimpContactStatus,
-//         }
-//       );
-//       logs.userAdded(
-//         uid,
-//         config.mailchimpAudienceId,
-//         results.id,
-//         config.mailchimpContactStatus
-//       );
-//       logs.complete();
-//     } catch (err) {
-//       logs.errorAddUser(err);
-//     }
-//   }
-// );
+    try {
+      logs.userAdding(uid, config.mailchimpAudienceId);
+      const results = await mailchimp.post(
+        `/lists/${config.mailchimpAudienceId}/members`,
+        {
+          email_address: email,
+          status: config.mailchimpContactStatus,
+        }
+      );
+      logs.userAdded(
+        uid,
+        config.mailchimpAudienceId,
+        results.id,
+        config.mailchimpContactStatus
+      );
+      logs.complete();
+    } catch (err) {
+      logs.errorAddUser(err);
+    }
+  }
+);
 
-// exports.removeUserFromList = functions.handler.auth.user.onDelete(
-//   async (user) => {
-//     logs.start();
+exports.removeUserFromList = functions.handler.auth.user.onDelete(
+  async (user) => {
+    logs.start();
 
-//     if (!mailchimp) {
-//       logs.mailchimpNotInitialized();
-//       return;
-//     }
+    if (!mailchimp) {
+      logs.mailchimpNotInitialized();
+      return;
+    }
 
-//     const { email, uid } = user;
-//     if (!email) {
-//       logs.userNoEmail();
-//       return;
-//     }
+    const { email, uid } = user;
+    if (!email) {
+      logs.userNoEmail();
+      return;
+    }
 
-//     try {
-//       const hashed = crypto
-//         .createHash("md5")
-//         .update(email)
-//         .digest("hex");
+    try {
+      const hashed = crypto
+        .createHash("md5")
+        .update(email)
+        .digest("hex");
 
-//       logs.userRemoving(uid, hashed, config.mailchimpAudienceId);
-//       await mailchimp.delete(
-//         `/lists/${config.mailchimpAudienceId}/members/${hashed}`
-//       );
-//       logs.userRemoved(uid, hashed, config.mailchimpAudienceId);
-//       logs.complete();
-//     } catch (err) {
-//       logs.errorRemoveUser(err);
-//     }
-//   }
-// );
+      logs.userRemoving(uid, hashed, config.mailchimpAudienceId);
+      await mailchimp.delete(
+        `/lists/${config.mailchimpAudienceId}/members/${hashed}`
+      );
+      logs.userRemoved(uid, hashed, config.mailchimpAudienceId);
+      logs.complete();
+    } catch (err) {
+      logs.errorRemoveUser(err);
+    }
+  }
+);
 
 if (config.mailchimpTagsPath) {
   exports.handleTags = functions.firestore.document(config.mailchimpTagsPath.watch)
     .onWrite(async (event, context) => {
       functions.logger.log(context);
       try {
-        // Deserialize User Input Watch Paths
+        // Get the configuration settings for mailchimp tags as is defined in extension.yml
         const watchPaths = config.mailchimpTagsPath;
   
-        // Validation
-        if (!watchPaths.tags) {
-          return null;
+        // Validate proper configuration settings were provided
+        if (!mailchimp) {
+          logs.mailchimpNotInitialized();
+          return;
         }
-        if (!watchPaths.email) {
-          functions.logger.log('An email field must be specified for the mailchimp subscriber')
+        if (!watchPaths.tags) {
           return null;
         }
         if (!Array.isArray(watchPaths.tags)) {
@@ -144,17 +166,11 @@ if (config.mailchimpTagsPath) {
           }        
           return acc;
         }, []);
-    
-        functions.logger.log('prevTags'); functions.logger.log(prevTags);
-        functions.logger.log('nextTags'); functions.logger.log(nextTags);
   
         // Compute the delta between existing/new tags
         const tagsToRemove = (prevTags || []).filter(tag => !(nextTags || []).includes(tag)).map(tag => ({ name: tag, status: 'inactive' }));
         const tagsToAdd = (nextTags || []).filter(tag => !(prevTags || []).includes(tag)).map(tag => ({ name: tag, status: 'active' }));
         const tags = [...tagsToRemove, ...tagsToAdd];
-        functions.logger.log('tagsToRemove'); functions.logger.log(tagsToRemove);
-        functions.logger.log('tagsToAdd'); functions.logger.log(tagsToAdd);
-        functions.logger.log('tags'); functions.logger.log(tags);
     
         // Compute the mailchimp subscriber email hash
         const subscriberHash = crypto.createHash("md5").update(newDoc.email).digest("hex");    
@@ -175,41 +191,32 @@ if (config.mailchimpMergeFieldPath) {
     .onWrite(async (event, context) => {
       functions.logger.log(context);
       try {
-        // Deserialize User Input Watch Paths
+        // Get the configuration settings for mailchimp merge fields as is defined in extension.yml
         const watchPaths = config.mailchimpMergeFieldPath;
   
-        // Validation
+        // Validate proper configuration settings were provided
+        if (!mailchimp) {
+          logs.mailchimpNotInitialized();
+          return;
+        }
         if (!watchPaths.mergeFields || isEmpty(watchPaths.mergeFields)) {
-          return null;
-        }
-        if (!watchPaths.watch) {
-          functions.logger.log('A watch field must be specified to listen for collection events');
-          return null;
-        }
-        if (!watchPaths.email) {
-          functions.logger.log('An email field must be specified for the mailchimp subscriber');
+          functions.logger.log(`A property named 'mergeFields' is required`);
           return null;
         }
         if (!_.isObject(watchPaths.mergeFields)) {
-          functions.logger.log('Merge Fields config must be an array');
+          functions.logger.log('Merge Fields config must be an object');
           return null;
         }
   
         // Get snapshot of document before & after write event
         const prevDoc = event && event.before && event.before.data();
-        functions.logger.log('prevDoc'); functions.logger.log(prevDoc);
         const newDoc = event && event.after && event.after.data();
-        functions.logger.log('newDoc'); functions.logger.log(newDoc);
   
         // Determine all the merge prior to write event
-        const mergeFieldsToUpdate = Object.entries(watchPaths.mergeFields).reduce((acc, [mergeFieldName, docFieldName]) => {
-          functions.logger.log('mergeFieldName'); functions.logger.log(mergeFieldName);
-          functions.logger.log('docFieldName'); functions.logger.log(docFieldName);
+        const mergeFieldsToUpdate = Object.entries(watchPaths.mergeFields).reduce((acc, [docFieldName, mergeFieldName]) => {
           const prevMergeFieldVaue = _.get(prevDoc, docFieldName);
-          functions.logger.log('prevMergeFieldVaue'); functions.logger.log(prevMergeFieldVaue);
           // lookup the same field value in new snapshot
           const newMergeFieldValue = _.get(newDoc, docFieldName, '');
-          functions.logger.log('newMergeFieldValue'); functions.logger.log(newMergeFieldValue);
           // if delta exists, then update accumulator collection
           if (prevMergeFieldVaue !== newMergeFieldValue) {
             acc[mergeFieldName] = newMergeFieldValue;
@@ -217,8 +224,6 @@ if (config.mailchimpMergeFieldPath) {
           return acc;
         }, {});
     
-        functions.logger.log('mergeFieldsToUpdate'); functions.logger.log(mergeFieldsToUpdate);
-  
         // Compute the mailchimp subscriber email hash
         const subscriberHash = crypto.createHash("md5").update(newDoc[watchPaths.email]).digest("hex");    
     
@@ -243,39 +248,27 @@ if (config.mailchimpMemberEventsPath) {
   .onWrite(async (event, context) => {
     functions.logger.log(context);
     try {
-      // Deserialize User Input Watch Paths
+      // Get the configuration settings for mailchimp custom events as is defined in extension.yml
       const watchPaths = config.mailchimpMemberEventsPath;
 
-      // Validation
+      // Validate proper configuration settings were provided
       if (!watchPaths.events) {
-        return null;
-      }
-      if (!watchPaths.watch) {
-        functions.logger.log('A watch field must be specified to listen for collection events');
-        return null;
-      }
-      if (!watchPaths.email) {
-        functions.logger.log('An email field must be specified for the mailchimp subscriber');
+        functions.logger.log(`A property named 'events' is required`);
         return null;
       }
       if (!Array.isArray(watchPaths.events)) {
-        functions.logger.log('Events config must be an array');
+        functions.logger.log(`'events' property must be an array`);
         return null;
       }
 
-      // Get snapshot of document before & after write event
+      // Get snapshot of document after write event
       const newDoc = event && event.after && event.after.data();
-      functions.logger.log('newDoc'); functions.logger.log(newDoc);
 
       const memberEventsToCreate = watchPaths.events.reduce((acc, key) => {
-        functions.logger.log('key'); functions.logger.log(key);
-        const mailchimpEventName = _.get(newDoc, key)
-        functions.logger.log('mailchimpEventName'); functions.logger.log(mailchimpEventName);
-        // acc = Array.isArray(mailchimpEventName) ? acc.concat(mailchimpEventName) : acc.push(mailchimpEventName);
+        const mailchimpEventName = _.get(newDoc, key);
         acc = Array.isArray(mailchimpEventName) ? acc = [...acc, ...mailchimpEventName] : acc.concat(mailchimpEventName);
         return acc;
       }, []);
-      functions.logger.log('memberEventsToCreate'); functions.logger.log(memberEventsToCreate);
 
       // Compute the mailchimp subscriber email hash
       const subscriberHash = crypto.createHash("md5").update(newDoc[watchPaths.email]).digest("hex");
@@ -283,12 +276,10 @@ if (config.mailchimpMemberEventsPath) {
       // Invoke mailchimp API with updated tags
       if (!_.isEmpty(memberEventsToCreate)) {
         const requests = memberEventsToCreate.reduce((acc, name) => {
-          console.log('name', name);
           acc.push(mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}/events`, { name }));
           return acc;
         }, []);
-        const result = await Promise.all(requests);
-        functions.logger.log(result);
+        await Promise.all(requests);
       }
     } catch (e) {
       functions.logger.log(e);
