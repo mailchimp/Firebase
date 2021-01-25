@@ -129,3 +129,30 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
     "subscriberEmail": "emailAddress"
   }
   ```
+### Testing Cloud Functions:
+The Firebase emulator can be used to locally test cloud functions.
+
+1) Install [Firebase CLI](https://firebase.google.com/docs/cli)
+
+2) Run the following command: `Firebase login`
+
+3) Create a project called "mailchimp-extension"
+
+4) Run `npm install` or `yarn install`
+
+4) Start the emulator by entering the following command:
+```
+firebase emulators:start --project mailchimp-extension --only functions,firestore
+```
+
+### Deploying Cloud Functions:
+Once the cloud functions have been tested via the emulator, deploy functions to Firebase:
+All Functions:
+```
+firebase deploy --project mailchimp-extension --only functions
+```
+
+Specific Functions:
+```
+firebase deploy --project mailchimp-extension --only "functions:mergeTagsHandler,functions:mergeFieldsHandler,functions:memberEventsHandler"
+```
