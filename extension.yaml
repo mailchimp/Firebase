@@ -67,12 +67,12 @@ resources:
         eventType: providers/firebase.auth/eventTypes/user.delete
         resource: projects/${PROJECT_ID}
 
-  - name: tagsHandler
+  - name: mergeTagsHandler
     type: firebaseextensions.v1beta.function
     description:
-      Tags provide the ability to associate "metadata" or "labels" with a Mailchimp subscriber.
-      The tagsHandler function listens for write events on a specified firebase path and treats the 
-      document data as Mailchimp subscriber tags.
+      Member Tags provide the ability to associate "metadata" or "labels" with a Mailchimp subscriber.
+      The memberTagsHandler function listens for Firestore write events based on specified config path, 
+      then automatically classifies the document data as Mailchimp subscriber tags.
     properties:
       location: ${LOCATION}
       runtime: nodejs10
@@ -84,8 +84,8 @@ resources:
     type: firebaseextensions.v1beta.function
     description:
       Merge fields provide the ability to create new properties that can be associated with Mailchimp subscriber.
-      The mergeFieldsHandler function listens for write events on a specific firebase document and automatically uses
-      the document data to populate the subscriber's respective merge fields.
+      The mergeFieldsHandler function listens for Firestore write events based on specified config path, 
+      then automatically populates the Mailchimp subscriber's respective merge fields.
     properties:
       location: ${LOCATION}
       runtime: nodejs10
@@ -97,8 +97,9 @@ resources:
     type: firebaseextensions.v1beta.function
     description:
       Member events are Mailchimp specific activity events that can be created and associated with a predefined action.
-      The memberEventsHandler function listens for write events on a specific firebase document and automatically uses
-      the document data to create a mailchimp event on the specified subscriber's profile.
+      The memberEventsHandler function Listens for Firestore write events based on specified config path, 
+      then automatically uses the document data to create a Mailchimp event on the subscriber's profile 
+      which can subsequently trigger automation workflows.
     properties:
       location: ${LOCATION}
       runtime: nodejs10
@@ -197,8 +198,8 @@ params:
     description: >-
       Provide a JSON configuration specifying which events in Firebase the extension 
       should listen on to associate Mailchimp member tags to a subscriber. To learn more,
-      reference the [setup docs](https://github.com/firebase/extensions/blob/master/auth-mailchimp-sync/README.md).
-    example: '{"watch": "users/{id}", "memberTags": ["meta", "role"], "email": "email"}'
+      reference the [setup docs](https://github.com/firebase/extensions/blob/master/auth-mailchimp-sync/README.md#configuration-parameters).
+    example: '{"watch": "trainingRegistrations/{id}", "memberTags": ["jobTitle", "domainKnowledge"], "subscriberEmail": "emailAddress"}'
     required: false
 
   - param: FIREBASE_MERGE_FIELDS_CONFIG
@@ -206,9 +207,9 @@ params:
     label: Firebase Merge Fields Config
     description: >-
       Provide a JSON configuration specifying which events in Firebase the extension 
-      should listen on to associate document data with a subscriber's merge fields. To learn more,
-      reference the [setup docs](https://github.com/firebase/extensions/blob/master/auth-mailchimp-sync/README.md).
-    example: '{"watch": "users/{id}", "mergeFields": {"firstName": "FNAME", "phoneNumber": "PHONE", "role": "ROLE"}, "email": "email"}'
+      should listen on to associate document data with the subscriber's merge fields. To learn more,
+      reference the [setup docs](https://github.com/firebase/extensions/blob/master/auth-mailchimp-sync/README.md#configuration-parameters).
+    example: '{"watch": "trainingRegistrations/{id}", "mergeFields": {"firstName": "FNAME", "lastName": "LNAME", "phoneNumber": "PHONE", "courseName": "COURSE_NAM"}, "subscriberEmail": "emailAddress"}'
     required: false
 
   - param: FIREBASE_MEMBER_EVENTS_CONFIG
@@ -217,6 +218,6 @@ params:
     description: >-
       Provide a JSON configuration specifying which events in Firebase the extension 
       should listen on to associate document data with a particular event on the subscriber's profile. To learn more,
-      reference the [setup docs](https://github.com/firebase/extensions/blob/master/auth-mailchimp-sync/README.md).
-    example: '{"watch": "users/{id}", "memberEvents": ["mailchimpEvents"], "email": "email"}'
+      reference the [setup docs](https://github.com/firebase/extensions/blob/master/auth-mailchimp-sync/README.md#configuration-parameters).
+    example: '{"watch": "trainingRegistrations/{id}", "memberEvents": ["activity"], "subscriberEmail": "emailAddress"}'
     required: false

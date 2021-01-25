@@ -17,12 +17,7 @@ let mailchimp;
 try {
   // Create a new Mailchimp object instance
   mailchimp = new Mailchimp(config.mailchimpApiKey);
-
-  // Functions must point to a document to trigger
-  // Thus, a specific id (users/marie) or wildcard (users/{userId}) must be specified
-  // https://firebase.google.com/docs/firestore/extend-with-functions#wildcards-parameters
-  const VALID_COLLECTION_NAME = new RegExp('/[a-zA-Z]+\/{[a-zA-Z]+}/g');
-
+  
   // extension.yml receives seralized JSON inputs representing configuration settings for merge fields, tags, and custom events
   // the following code deserializes the JSON inputs and builds a configuration object with each custom setting path (tags, merge fields, custom events) at the root.
   config = Object.entries(config).reduce((acc, [key, value]) => {
@@ -33,15 +28,14 @@ try {
     if (CONFIG_PARAM_NAMES.includes(key)) {
       const parsedConfig = JSON.parse(config[key]);
       if (!parsedConfig.watch) {
+        // Functions must point to a document to trigger
+        // Thus, a specific id (users/marie) or wildcard (users/{userId}) must be specified
+        // https://firebase.google.com/docs/firestore/extend-with-functions#wildcards-parameters
         logError(`${key} requires a property named 'watch'`);
       }
       if (!parsedConfig.subscriberEmail) {
         logError(`${key} requires a property named 'subscriberEmail'`);
       }
-      // console.log('testing', parsedConfig.watch);
-      // if (!VALID_COLLECTION_NAME.test(parsedConfig.watch)) {
-      //   logError(`${key} requires a property named 'watch' with a specific/wildcard param defined i.e (1) users/marie (2) users/{userId}`);
-      // }
       acc[key] = parsedConfig;
     } else {
       acc[key] = value;
@@ -123,7 +117,7 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
 );
 
 if (config.mailchimpMemberTags) {
-  exports.tagsHandler = functions.firestore.document(config.mailchimpMemberTags.watch)
+  exports.mergeTagsHandler = functions.firestore.document(config.mailchimpMemberTags.watch)
     .onWrite(async (event, context) => {
       functions.logger.log(context);
       try {
