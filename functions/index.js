@@ -6,9 +6,12 @@ const Mailchimp = require('mailchimp-api-v3');
 
 let config = require('./config');
 const logs = require('./logs');
-const { isEmpty } = require('lodash');
 
-const CONFIG_PARAM_NAMES = Object.freeze(['mailchimpMemberTags', 'mailchimpMergeField', 'mailchimpMemberEvents']);
+const CONFIG_PARAM_NAMES = Object.freeze([
+  'mailchimpMemberTags',
+  'mailchimpMergeField',
+  'mailchimpMemberEvents'
+]);
 
 admin.initializeApp();
 logs.init();
@@ -16,8 +19,8 @@ logs.init();
 let mailchimp;
 try {
   // Create a new Mailchimp object instance
-  mailchimp = new Mailchimp(config.mailchimpApiKey);
-  
+  mailchimp = new Mailchimp(config.mailchimpOAuthToken);
+
   // extension.yml receives seralized JSON inputs representing configuration settings for merge fields, tags, and custom events
   // the following code deserializes the JSON inputs and builds a configuration object with each custom setting path (tags, merge fields, custom events) at the root.
   config = Object.entries(config).reduce((acc, [key, value]) => {
@@ -27,17 +30,19 @@ try {
     }
     if (CONFIG_PARAM_NAMES.includes(key)) {
       const parsedConfig = JSON.parse(config[key]);
-      if (!parsedConfig.watch) {
-        // Functions must point to a document to trigger
-        // Thus, a specific id (users/marie) or wildcard (users/{userId}) must be specified
+      if (!config[`${key}WatchPath`]) {
+        // Firebase functions must listen to a document path
+        // As such, a specific id (users/marie) or wildcard (users/{userId}) must be specified
         // https://firebase.google.com/docs/firestore/extend-with-functions#wildcards-parameters
-        logError(`${key} requires a property named 'watch'`);
+        logError(`${key}WatchPath config property is undefined. Please ensure a proper watch path param has been provided.`);
       }
       if (!parsedConfig.subscriberEmail) {
         logError(`${key} requires a property named 'subscriberEmail'`);
       }
+      // persist the seralized JSON
       acc[key] = parsedConfig;
     } else {
+      // persist the string value as-is (location, oAuth Token, AudienceId, Contact Status, etc.)
       acc[key] = value;
     }
     return acc;
@@ -117,7 +122,7 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
 );
 
 if (config.mailchimpMemberTags) {
-  exports.mergeTagsHandler = functions.firestore.document(config.mailchimpMemberTags.watch)
+  exports.mergeTagsHandler = functions.handler.firestore.document
     .onWrite(async (event, context) => {
       functions.logger.log(context);
       try {
@@ -158,7 +163,7 @@ if (config.mailchimpMemberTags) {
         const prevTags = prevDoc ? getTagsFromEventSnapshot(prevDoc) : [];
         // Determine all the tags after write event
         const newTags = newDoc ? getTagsFromEventSnapshot(newDoc) : [];
-        
+
         // Compute the delta between existing/new tags
         const tagsToRemove = prevTags.filter(tag => !newTags.includes(tag)).map(tag => ({ name: tag, status: 'inactive' }));
         const tagsToAdd = newTags.filter(tag => !prevTags.includes(tag)).map(tag => ({ name: tag, status: 'active' }));
@@ -179,7 +184,7 @@ if (config.mailchimpMemberTags) {
 }
 
 if (config.mailchimpMergeField) {
-  exports.mergeFieldsHandler = functions.firestore.document(config.mailchimpMergeField.watch)
+  exports.mergeFieldsHandler = functions.handler.firestore.document
     .onWrite(async (event, context) => {
       functions.logger.log(context);
       try {
@@ -191,7 +196,7 @@ if (config.mailchimpMergeField) {
           logs.mailchimpNotInitialized();
           return;
         }
-        if (!mergeFieldsConfig.mergeFields || isEmpty(mergeFieldsConfig.mergeFields)) {
+        if (!mergeFieldsConfig.mergeFields || _.isEmpty(mergeFieldsConfig.mergeFields)) {
           functions.logger.log(`A property named 'mergeFields' is required`);
           return null;
         }
@@ -236,7 +241,7 @@ if (config.mailchimpMergeField) {
 }
 
 if (config.mailchimpMemberEvents) {
-  exports.memberEventsHandler = functions.firestore.document(config.mailchimpMemberEvents.watch)
+  exports.memberEventsHandler = functions.handler.firestore.document
     .onWrite(async (event, context) => {
       functions.logger.log(context);
       try {
@@ -260,7 +265,7 @@ if (config.mailchimpMemberEvents) {
         // Get snapshot of document before & after write event
         const prevDoc = event && event.before && event.before.data();
         const newDoc = event && event.after && event.after.data();
-      
+
         // Retrieves subscriber tags before/after write event
         const getMemberEventsFromSnapshot = snapshot => eventsConfig.memberEvents.reduce((acc, memberEvent) => {
           const events = _.get(snapshot, memberEvent);
@@ -288,7 +293,7 @@ if (config.mailchimpMemberEvents) {
             acc.push(mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}/events`, { name }));
             return acc;
           }, []);
-          await Promise.all(requests);          
+          await Promise.all(requests);
         }
       } catch (e) {
         functions.logger.log(e);
