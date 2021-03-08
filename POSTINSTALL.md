@@ -13,7 +13,7 @@ You can test out this extension right away!
 #### Member Tags
 1.  Go to your [Firestore Database](https://console.firebase.google.com/project/${param:PROJECT_ID}/firestore) in the Firebase console.
 
-Assuming the following params was provided:
+Assuming the following params:
 ```
 Member Tags Watch Path: registrations/{documentId}
 Member Tags Watch Config:
@@ -36,7 +36,7 @@ jobTitle: "Marketing Manager"
 #### Merge Fields
 1.  Go to your [Firestore Database](https://console.firebase.google.com/project/${param:PROJECT_ID}/firestore) in the Firebase console.
 
-Assuming the following config param was provided:
+Assuming the following params:
 ```
 Merge Fields Watch Path: registrations/{documentId}
 Merge Fields Watch Config:
@@ -66,7 +66,7 @@ courseName: "Mailchimp Marketing Campaigns"
 #### Member Events
 1.  Go to your [Firestore Database](https://console.firebase.google.com/project/${param:PROJECT_ID}/firestore) in the Firebase console.
 
-Assuming the following config param was provided:
+Assuming the following params:
 ```
 Member Events Watch Path: registrations/{documentId}
 Member Events Watch Config:
