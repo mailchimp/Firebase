@@ -122,7 +122,7 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
 );
 
 if (config.mailchimpMemberTags) {
-  exports.mergeTagsHandler = functions.handler.firestore.document
+  exports.memberTagsHandler = functions.handler.firestore.document
     .onWrite(async (event, context) => {
       functions.logger.log(context);
       try {
