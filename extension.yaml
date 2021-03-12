@@ -52,7 +52,7 @@ resources:
       then automatically adds the new user to your specified MailChimp audience.
     properties:
       location: ${LOCATION}
-      runtime: nodejs10
+      runtime: nodejs12
       eventTrigger:
         eventType: providers/firebase.auth/eventTypes/user.create
         resource: projects/${PROJECT_ID}
@@ -65,7 +65,7 @@ resources:
       MailChimp audience.
     properties:
       location: ${LOCATION}
-      runtime: nodejs10
+      runtime: nodejs12
       eventTrigger:
         eventType: providers/firebase.auth/eventTypes/user.delete
         resource: projects/${PROJECT_ID}
@@ -78,7 +78,7 @@ resources:
       then automatically classifies the document data as Mailchimp subscriber tags.
     properties:
       location: ${LOCATION}
-      runtime: nodejs10
+      runtime: nodejs12
       eventTrigger:
         eventType: providers/cloud.firestore/eventTypes/document.write
         resource: projects/${PROJECT_ID}/databases/(default)/documents/{MAILCHIMP_MEMBER_TAGS_WATCH_PATH}
@@ -91,7 +91,7 @@ resources:
       then automatically populates the Mailchimp subscriber's respective merge fields.
     properties:
       location: ${LOCATION}
-      runtime: nodejs10
+      runtime: nodejs12
       eventTrigger:
         eventType: providers/cloud.firestore/eventTypes/document.write
         resource: projects/${PROJECT_ID}/databases/(default)/documents/{MAILCHIMP_MERGE_FIELDS_WATCH_PATH}
@@ -105,7 +105,7 @@ resources:
       which can subsequently trigger automation workflows.
     properties:
       location: ${LOCATION}
-      runtime: nodejs10
+      runtime: nodejs12
       eventTrigger:
         eventType: providers/cloud.firestore/eventTypes/document.write
         resource: projects/${PROJECT_ID}/databases/(default)/documents/{MAILCHIMP_MEMBER_EVENTS_WATCH_PATH}
@@ -200,7 +200,7 @@ params:
     description: Specify the Firestore collection to listen for member tag changes
     type: string
     example: registrations/{documentId}
-    required: false    
+    required: true    
 
   - param: MAILCHIMP_MEMBER_TAGS_CONFIG
     type: string
@@ -225,7 +225,7 @@ params:
     description: Specify the Firestore collection to listen for merge field changes
     type: string
     example: registrations/{documentId}
-    required: false    
+    required: true    
 
   - param: MAILCHIMP_MERGE_FIELDS_CONFIG
     type: string
@@ -249,7 +249,7 @@ params:
     description: Specify the Firestore collection to listen for member event changes
     type: string
     example: registrations/{documentId}
-    required: false
+    required: true
 
   - param: MAILCHIMP_MEMBER_EVENTS_CONFIG
     type: string
