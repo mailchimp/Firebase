@@ -28,7 +28,7 @@ try {
       functions.logger.log(message);
       return acc;
     }
-    if (CONFIG_PARAM_NAMES.includes(key)) {
+    if (config[key] && CONFIG_PARAM_NAMES.includes(key)) {
       const parsedConfig = JSON.parse(config[key]);
       if (!config[`${key}WatchPath`]) {
         // Firebase functions must listen to a document path
