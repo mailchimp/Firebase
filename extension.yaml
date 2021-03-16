@@ -81,7 +81,7 @@ resources:
       runtime: nodejs12
       eventTrigger:
         eventType: providers/cloud.firestore/eventTypes/document.write
-        resource: projects/${PROJECT_ID}/databases/(default)/documents/{MAILCHIMP_MEMBER_TAGS_WATCH_PATH}
+        resource: projects/${PROJECT_ID}/databases/(default)/documents/${MAILCHIMP_MEMBER_TAGS_WATCH_PATH}
 
   - name: mergeFieldsHandler
     type: firebaseextensions.v1beta.function
@@ -94,7 +94,7 @@ resources:
       runtime: nodejs12
       eventTrigger:
         eventType: providers/cloud.firestore/eventTypes/document.write
-        resource: projects/${PROJECT_ID}/databases/(default)/documents/{MAILCHIMP_MERGE_FIELDS_WATCH_PATH}
+        resource: projects/${PROJECT_ID}/databases/(default)/documents/${MAILCHIMP_MERGE_FIELDS_WATCH_PATH}
 
   - name: memberEventsHandler
     type: firebaseextensions.v1beta.function
@@ -108,7 +108,7 @@ resources:
       runtime: nodejs12
       eventTrigger:
         eventType: providers/cloud.firestore/eventTypes/document.write
-        resource: projects/${PROJECT_ID}/databases/(default)/documents/{MAILCHIMP_MEMBER_EVENTS_WATCH_PATH}
+        resource: projects/${PROJECT_ID}/databases/(default)/documents/${MAILCHIMP_MEMBER_EVENTS_WATCH_PATH}
 
 params:
   - param: LOCATION

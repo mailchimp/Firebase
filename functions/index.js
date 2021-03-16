@@ -124,7 +124,6 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
 if (config.mailchimpMemberTags) {
   exports.memberTagsHandler = functions.handler.firestore.document
     .onWrite(async (event, context) => {
-      functions.logger.log(context);
       try {
         // Get the configuration settings for mailchimp tags as is defined in extension.yml
         const tagsConfig = config.mailchimpMemberTags;
@@ -174,8 +173,7 @@ if (config.mailchimpMemberTags) {
 
         // Invoke mailchimp API with updated tags
         if (tags && tags.length) {
-          const result = await mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}/tags`, { tags });
-          functions.logger.log(result);
+          await mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}/tags`, { tags });
         }
       } catch (e) {
         functions.logger.log(e);
@@ -186,7 +184,6 @@ if (config.mailchimpMemberTags) {
 if (config.mailchimpMergeField) {
   exports.mergeFieldsHandler = functions.handler.firestore.document
     .onWrite(async (event, context) => {
-      functions.logger.log(context);
       try {
         // Get the configuration settings for mailchimp merge fields as is defined in extension.yml
         const mergeFieldsConfig = config.mailchimpMergeField;
@@ -231,8 +228,7 @@ if (config.mailchimpMergeField) {
 
         // Invoke mailchimp API with updated tags
         if (!_.isEmpty(mergeFieldsToUpdate)) {
-          const result = await mailchimp.put(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}`, params);
-          functions.logger.log(result);
+          await mailchimp.put(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}`, params);
         }
       } catch (e) {
         functions.logger.log(e);
@@ -243,7 +239,6 @@ if (config.mailchimpMergeField) {
 if (config.mailchimpMemberEvents) {
   exports.memberEventsHandler = functions.handler.firestore.document
     .onWrite(async (event, context) => {
-      functions.logger.log(context);
       try {
         // Get the configuration settings for mailchimp custom events as is defined in extension.yml
         const eventsConfig = config.mailchimpMemberEvents;
