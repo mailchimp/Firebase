@@ -159,7 +159,7 @@ params:
     required: true
     immutable: true
 
-  - param: MAILCHIMP_OAUTH_TOKEN
+  - param: MAILCHIMP_API_KEY
     label: Mailchimp OAuth Token
     description: >-
       To obtain a Mailchimp OAuth Token, login to

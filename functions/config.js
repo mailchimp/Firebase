@@ -1,6 +1,6 @@
 module.exports = {
   location: process.env.LOCATION,
-  mailchimpOAuthToken: process.env.MAILCHIMP_OAUTH_TOKEN,
+  mailchimpOAuthToken: process.env.MAILCHIMP_API_KEY,
   mailchimpAudienceId: process.env.MAILCHIMP_AUDIENCE_ID,
   mailchimpContactStatus: process.env.MAILCHIMP_CONTACT_STATUS,
   mailchimpMemberTagsWatchPath: process.env.MAILCHIMP_MEMBER_TAGS_WATCH_PATH,
