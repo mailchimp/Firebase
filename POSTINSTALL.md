@@ -27,8 +27,10 @@ Member Tags Watch Config:
 
 1.  Click **Add document** and populate the document:
 ```
-emailAddress: "{A_MAILCHIMP_SUBSCRIBER_EMAIL_ADDRESS}"
-jobTitle: "Marketing Manager"
+{
+  emailAddress: "{A_MAILCHIMP_SUBSCRIBER_EMAIL_ADDRESS}",
+  jobTitle: "Marketing Manager"
+}
 ```
 
 1.  Confirm the user data has been updated in the "Tags" portion of your Mailchimp account: https://admin.mailchimp.com/lists/members/view?id={YOUR_MAILCHIMP_ACCOUNT_ID}
@@ -55,10 +57,12 @@ Merge Fields Watch Config:
 
 1.  Click **Add document** and populate the document:
 ```
-emailAddress: "{A_MAILCHIMP_SUBSCRIBER_EMAIL_ADDRESS}"
-firstName: "Janet"
-phoneNumber: "000-111-2222"
-courseName: "Mailchimp Marketing Campaigns"
+{
+  emailAddress: "{A_MAILCHIMP_SUBSCRIBER_EMAIL_ADDRESS}",
+  firstName: "Janet",
+  phoneNumber: "000-111-2222",
+  courseName: "Mailchimp Marketing Campaigns"
+}
 ```
 
 1.  Confirm the user data has been updated in the "Profile Information" portion of your Mailchimp account: https://admin.mailchimp.com/lists/members/view?id={YOUR_MAILCHIMP_ACCOUNT_ID}
@@ -80,8 +84,10 @@ Member Events Watch Config:
 
 1.  Click **Add document** and populate the document:
 ```
-emailAddress: "{A_MAILCHIMP_SUBSCRIBER_EMAIL_ADDRESS}"
-activity: ['training_registration', 'welcome_email', 'reminder_email']
+{
+  emailAddress: "{A_MAILCHIMP_SUBSCRIBER_EMAIL_ADDRESS}",
+  activity: ['training_registration', 'welcome_email', 'reminder_email']
+}
 ```
 
 1.  Click **Add document** and populate the document:
