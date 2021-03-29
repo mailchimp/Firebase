@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: mailchimp-extension
+name: official-firebase-sync
 version: 0.1.0
 specVersion: v1beta
 
-displayName: Firebase Mailchimp Extension
+displayName: Official Firebase Sync
 description:
-  Adds new users from Firebase Authentication to a specified Mailchimp audience.
+  This extension uses [Firebase Authentication](https://firebase.google.com/docs/auth) to manage (add/remove) users and Firestore to create member tags, merge fields, and member events with Mailchimp.
 
 license: Apache-2.0
 

@@ -7,7 +7,7 @@ Use this extension to:
 
 #### Additional setup
 
-This extension uses [Firebase Authentication](https://firebase.google.com/docs/auth) to manage (add/remove) users and Firestore to create member tag, merge field, and member event associations with Mailchimp.
+This extension uses [Firebase Authentication](https://firebase.google.com/docs/auth) to manage (add/remove) users and Firestore to create member tags, merge fields, and member events with Mailchimp.
 
 This extension uses Mailchimp, so you'll need to supply your [Mailchimp OAuth Token](http://firebase.mailchimp.com/index.html) and Audience ID when installing this extension.
 
