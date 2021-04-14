@@ -1,16 +1,15 @@
-Use this extension to add new users to an existing [Mailchimp](https://mailchimp.com) audience.
-
-This extension adds the email address of each new user to your specified Mailchimp audience. Also, if the user deletes their user account for your app, this extension removes the user from the Mailchimp audience.
-
-**Note:** To use this extension, you need to manage your users with Firebase Authentication.
-
-This extension uses Mailchimp, so you'll need to supply your Mailchimp API Key and Audience ID when installing this extension.
+Use this extension to:
+ - Add new users to an existing [Mailchimp](https://mailchimp.com) audience.
+ - Remove user from an existing Mailchimp audience
+ - Associate tags/metadata/labels with a Mailchimp subscriber
+ - Associate user data to Mailchimp subscriber via merge fields
+ - Specify activity events that can trigger Mailchimp actions and automations 
 
 #### Additional setup
 
-Make sure that you've set up [Firebase Authentication](https://firebase.google.com/docs/auth) to manage your users.
+This extension uses [Firebase Authentication](https://firebase.google.com/docs/auth) to manage (add/remove) users and Firestore to create member tags, merge fields, and member events with Mailchimp.
 
-You must also have a Mailchimp account before installing this extension.
+This extension uses Mailchimp, so you'll need to supply your [Mailchimp OAuth Token](http://firebase.mailchimp.com/index.html) and Audience ID when installing this extension.
 
 #### Billing
  
