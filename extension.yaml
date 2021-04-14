@@ -13,7 +13,7 @@
 # limitations under the License.
 
 name: mailchimp-firebase-sync
-version: 0.1.0
+version: 0.1.1
 specVersion: v1beta
 
 displayName: Mailchimp Firebase Sync
@@ -227,7 +227,7 @@ params:
       ```
       {
         "memberTags": ["domainKnowledge", "jobTitle"],
-        "subscriberEmail": "email"
+        "subscriberEmail": "emailAddress"
       }
       ```
 
@@ -254,12 +254,10 @@ params:
         "lastName": "..",
         "phoneNumber": "..",
         "courseName": "..",
-        "email": "..", // The config key 'subscriberEmail' maps to this field
+        "emailAddress": "..", // The config key 'subscriberEmail' maps to this field
         "jobTitle": "..", // The config key 'memberTags' maps to this field
         "domainKnowledge": "..", // The config key 'memberTags' maps to this field
-        "activity": [],
-        "createdTimestamp": "2021-03-26T12:38:14.989Z",
-        "updatedTimestamp": "2021-03-26T12:38:14.989Z"
+        "activity": []
       }
       ```
 
@@ -334,12 +332,10 @@ params:
         "lastName": "..", // The key maps to merge field LNAME
         "phoneNumber": "..", // The key maps to merge field PHONE
         "courseName": "..", // The key maps to merge field COURSE_NAM
-        "email": "..", // The config key "subscriberEmail" maps to this field
+        "emailAddress": "..", // The config key "subscriberEmail" maps to this field
         "jobTitle": "..", 
         "domainKnowledge": "..",
-        "activity": [],
-        "createdTimestamp": "2021-03-26T12:38:14.989Z",
-        "updatedTimestamp": "2021-03-26T12:38:14.989Z"
+        "activity": []
       }
       ```
 
@@ -414,12 +410,10 @@ params:
         "lastName": "..",
         "phoneNumber": "..",
         "courseName": "..",
-        "email": "..", // The config key "subscriberEmail" maps to this field
+        "emailAddress": "..", // The config key "subscriberEmail" maps to this field
         "jobTitle": "..", 
         "domainKnowledge": "..",
-        "activity": ["send_welcome_email"], // The config key "memberTags" maps to this field
-        "createdTimestamp": "2021-03-26T12:38:14.989Z",
-        "updatedTimestamp": "2021-03-26T12:38:14.989Z"
+        "activity": ["send_welcome_email"] // The config key "memberTags" maps to this field
       }
       ```
 
