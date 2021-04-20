@@ -1,13 +1,15 @@
 Use this extension to:
  - Add new users to an existing [Mailchimp](https://mailchimp.com) audience.
  - Remove user from an existing Mailchimp audience
- - Associate tags/metadata/labels with a Mailchimp subscriber
- - Associate user data to Mailchimp subscriber via merge fields
- - Specify activity events that can trigger Mailchimp actions and automations 
+ - Associate member tags with a Mailchimp subscriber
+ - Use merge fields to sync user data with a Mailchimp subscriber
+ - Set member events to trigger Mailchimp actions and automations 
 
 #### Additional setup
 
-This extension uses [Firebase Authentication](https://firebase.google.com/docs/auth) to manage (add/remove) users and Firestore to create member tags, merge fields, and member events with Mailchimp.
+This extension uses the following Firebase products:
+ - [Authentication](https://firebase.google.com/docs/auth) to manage (add/remove) users
+ - [Cloud Firestore](https://firebase.google.com/docs/firestore) to create member tags, merge fields, and member events with Mailchimp.
 
 This extension uses Mailchimp, so you'll need to supply your [Mailchimp OAuth Token](http://firebase.mailchimp.com/index.html) and Audience ID when installing this extension.
 
