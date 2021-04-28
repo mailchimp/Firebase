@@ -15,7 +15,7 @@ You can test out this extension right away!
 
 Assuming the following params:
 ```
-Member Tags Watch Path: registrations/{documentId}
+Member Tags Watch Path: registrations
 Member Tags Watch Config:
 {
   "memberTags": ["jobTitle", "domainKnowledge"],
@@ -23,12 +23,12 @@ Member Tags Watch Config:
 }
 ```
 
-1.  Click **Start collection** and provide the following name "registrations/{documentId}"
+1.  Click **Start collection** and provide the following name "registrations"
 
 1.  Click **Add document** and populate the document:
 ```
 {
-  emailAddress: "{A_MAILCHIMP_SUBSCRIBER_EMAIL_ADDRESS}",
+  emailAddress: "{MAILCHIMP_SUBSCRIBER_EMAIL_ADDRESS}",
   jobTitle: "Marketing Manager"
 }
 ```
@@ -40,28 +40,27 @@ Member Tags Watch Config:
 
 Assuming the following params:
 ```
-Merge Fields Watch Path: registrations/{documentId}
+Merge Fields Watch Path: registrations
 Merge Fields Watch Config:
 {
   "mergeFields": {
     "firstName": "FNAME",
     "lastName": "LNAME",
-    "phoneNumber": "PHONE",
-    "courseName": "COURSE_NAM"
+    "phoneNumber": "PHONE"
   },
   "subscriberEmail": "emailAddress"
 }
 ```
 
-1.  Click **Start collection** and provide the following name "registrations/{documentId}"
+1.  Click **Start collection** and provide the following name "registrations"
 
 1.  Click **Add document** and populate the document:
 ```
 {
-  emailAddress: "{A_MAILCHIMP_SUBSCRIBER_EMAIL_ADDRESS}",
+  emailAddress: "{MAILCHIMP_SUBSCRIBER_EMAIL_ADDRESS}",
   firstName: "Janet",
-  phoneNumber: "000-111-2222",
-  courseName: "Mailchimp Marketing Campaigns"
+  lastName: "Jones",
+  phoneNumber: "000-111-2222"
 }
 ```
 
@@ -72,7 +71,7 @@ Merge Fields Watch Config:
 
 Assuming the following params:
 ```
-Member Events Watch Path: registrations/{documentId}
+Member Events Watch Path: registrations
 Member Events Watch Config:
 {
   "memberEvents": ["activity"],
@@ -80,12 +79,12 @@ Member Events Watch Config:
 }
 ```
 
-1.  Click **Start collection** and provide the following name "registrations/{documentId}"
+1.  Click **Start collection** and provide the following name "registrations"
 
 1.  Click **Add document** and populate the document:
 ```
 {
-  emailAddress: "{A_MAILCHIMP_SUBSCRIBER_EMAIL_ADDRESS}",
+  emailAddress: "{MAILCHIMP_SUBSCRIBER_EMAIL_ADDRESS}",
   activity: ['training_registration', 'welcome_email', 'reminder_email']
 }
 ```
