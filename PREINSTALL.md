@@ -8,19 +8,26 @@ Use this extension to:
 
 #### Additional setup
 
-This extension uses the following Firebase products:
+Make sure that you've set up [Firebase Authentication](https://firebase.google.com/docs/auth) to manage your users.
 
- - [Authentication](https://firebase.google.com/docs/auth) to manage (add/remove) users
- - [Cloud Firestore](https://firebase.google.com/docs/firestore) to create member tags, merge fields, and member events with Mailchimp.
-
-This extension uses Mailchimp, so you'll need to supply your [Mailchimp OAuth Token](http://firebase.mailchimp.com/index.html) and Audience ID when installing this extension.
+You must also have a Mailchimp account before installing this extension.
 
 #### Billing
  
-To install an extension, your project must be on the [Blaze (pay as you go) plan](https://firebase.google.com/pricing)
- 
-- You will be charged a small amount (typically around $0.01/month) for the Firebase resources required by this extension (even if it is not used).
-- This extension uses other Firebase and Google Cloud Platform services, which have associated charges if you exceed the service’s free tier:
-  - Cloud Functions (Node.js 10+ runtime. See [FAQs](https://firebase.google.com/support/faq#expandable-24))
+This extension uses the following Firebase services which may have associated charges:
 
-Usage of this extension also requires you to have a Mailchimp account. You are responsible for any associated costs with your usage of Mailchimp.
+- Cloud Firestore
+- Cloud Functions
+- Firebase Authentication
+
+This extension also uses the following third-party services:
+
+- Mailchimp Billing ([pricing information](https://mailchimp.com/pricing))
+
+You are responsible for any costs associated with your use of these services.
+
+#### Note from Firebase
+
+To install this extension, your Firebase project must be on the Blaze (pay-as-you-go) plan. You will only be charged for the resources you use. Most Firebase services offer a free tier for low-volume use. [Learn more about Firebase billing.](https://firebase.google.com/pricing)
+
+You will be billed a small amount (typically less than $0.10) when you install or reconfigure this extension. See the [Cloud Functions for Firebase billing FAQ](https://firebase.google.com/support/faq#expandable-15) for a detailed explanation.
