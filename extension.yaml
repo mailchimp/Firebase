@@ -22,8 +22,8 @@ description:
 
 license: Apache-2.0
 
-sourceUrl: https://github.com/firebase/extensions/tree/master/auth-mailchimp-sync
-releaseNotesUrl: https://github.com/firebase/extensions/blob/master/auth-mailchimp-sync/CHANGELOG.md
+sourceUrl: https://github.com/mailchimp/Firebase/tree/master/
+releaseNotesUrl: https://github.com/mailchimp/Firebase/tree/master/CHANGELOG.md
 
 author:
   authorName: Mailchimp
