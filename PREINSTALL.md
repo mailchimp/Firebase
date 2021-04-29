@@ -1,4 +1,5 @@
 Use this extension to:
+
  - Add new users to an existing [Mailchimp](https://mailchimp.com) audience.
  - Remove user from an existing Mailchimp audience
  - Associate member tags with a Mailchimp subscriber
@@ -8,6 +9,7 @@ Use this extension to:
 #### Additional setup
 
 This extension uses the following Firebase products:
+
  - [Authentication](https://firebase.google.com/docs/auth) to manage (add/remove) users
  - [Cloud Firestore](https://firebase.google.com/docs/firestore) to create member tags, merge fields, and member events with Mailchimp.
 
