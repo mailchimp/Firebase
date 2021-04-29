@@ -1,6 +1,6 @@
 Use this extension to:
 
- - Add new users to an existing [Mailchimp](https://mailchimp.com) audience.
+ - Add new users to an existing Mailchimp audience
  - Remove user from an existing Mailchimp audience
  - Associate member tags with a Mailchimp subscriber
  - Use merge fields to sync user data with a Mailchimp subscriber
