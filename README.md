@@ -1,6 +1,6 @@
 # Mailchimp Firebase Sync
 
-**Author**: Firebase (**[https://firebase.google.com](https://firebase.google.com)**)
+**Author**: Mailchimp (**[https://mailchimp.com/](https://mailchimp.com/)**)
 
 **Description**: This extension uses Firebase Authentication to manage (add/remove) users and Firestore to create member tags, merge fields, and member events with Mailchimp.
 
