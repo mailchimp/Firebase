@@ -209,6 +209,9 @@ exports.mergeFieldsHandler = functions.handler.firestore.document.onWrite(
         return null;
       }
 
+      // Initialize an object for mailchimp request body
+      let params = {};
+
       // Get snapshot of document before & after write event
       const prevDoc = event && event.before && event.before.data();
       const newDoc = event && event.after && event.after.data();
@@ -225,16 +228,25 @@ exports.mergeFieldsHandler = functions.handler.firestore.document.onWrite(
         return acc;
       }, {});
 
-      // Get email to compute the mailchimp subscriber email hash
+      if (!_.isEmpty(mergeFieldsToUpdate)) {
+        params.merge_fields = mergeFieldsToUpdate;
+      }
+
+      if (mergeFieldsConfig.statusField) {
+        const prevStatus = !!_.get(prevDoc, mergeFieldsConfig.statusField, false);
+        const newStatus = !!_.get(newDoc, mergeFieldsConfig.statusField, false);
+
+        if (prevStatus !== newStatus) {
+          params.status = newStatus ? 'subscribed' : 'unsubscribed';
+        }
+      }
+
+      // Compute the mailchimp subscriber email hash
       const email = newDoc[mergeFieldsConfig.subscriberEmail];
 
-      const params = {
-        email_address: email,
-        merge_fields: mergeFieldsToUpdate
-      };
-
       // Invoke mailchimp API with updated tags
-      if (!_.isEmpty(mergeFieldsToUpdate)) {
+      if (!_.isEmpty(params)) {
+        params.email_address = email;
         await mailchimp.put(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash(email)}`, params);
       }
     } catch (e) {
