@@ -44,7 +44,7 @@ try {
       }
       // Each feature config must include a property called "subscriberEmail"
       // which maps to the mailchimp user email in the Firestore document
-      if (!parsedConfig.subscriberEmail) {
+      if (!_.isEmpty(parsedConfig) && !parsedConfig.subscriberEmail) {
         logError(`${key} requires a property named 'subscriberEmail'`);
       }
       // persist the serialized JSON
