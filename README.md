@@ -91,8 +91,10 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
 
   * Required Fields:
     1. `mergeFields` - JSON mapping representing the Firestore document fields to associate with Mailchimp Merge Fields.
+  
+    2. `statusField` - The Firestore document field of boolean type to reflect subscription status.
     
-    2. `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
+    3. `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
 
     Configuration Example:
     ``` 
@@ -102,6 +104,7 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
         "lastName": "LNAME",
         "phoneNumber": "PHONE"
       },
+      "statusField": "subscribed",
       "subscriberEmail": "emailAddress"
     } 
     ```
@@ -112,6 +115,7 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
       "firstName": "..", // The config property FNAME maps to this document field
       "lastName": "..", // The config property LNAME maps to this document field
       "phoneNumber": "..", // The config property PHONE maps to this document field
+      "subscribed": false, // The config property "statusField" maps to this document field
       "emailAddress": "..", // The config property "subscriberEmail" maps to this document field
       "jobTitle": "..", 
       "domainKnowledge": "..",
