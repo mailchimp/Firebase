@@ -233,6 +233,7 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
 
       const params = {
         email_address: newDoc[mergeFieldsConfig.subscriberEmail],
+        status_if_new: config.mailchimpContactStatus,
         merge_fields: mergeFieldsToUpdate
       };
 
