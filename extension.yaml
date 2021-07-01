@@ -13,10 +13,10 @@
 # limitations under the License.
 
 name: mailchimp-firebase-sync
-version: 0.2.2
+version: 0.2.3
 specVersion: v1beta
 
-displayName: Mailchimp Firebase Sync
+displayName: Manage Marketing with Mailchimp
 description:
   Syncs user data with a Mailchimp audience for sending personalized email marketing campaigns.
 

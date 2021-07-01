@@ -1,3 +1,7 @@
+## Version 0.2.3
+
+- Update extension name
+
 ## Version 0.2.2
 
 - Update author name and source repo url.
