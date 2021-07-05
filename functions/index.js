@@ -44,7 +44,7 @@ try {
       }
       // Each feature config must include a property called "subscriberEmail"
       // which maps to the mailchimp user email in the Firestore document
-      if (!parsedConfig.subscriberEmail) {
+      if (!_.isEmpty(parsedConfig) && !parsedConfig.subscriberEmail) {
         logError(`${key} requires a property named 'subscriberEmail'`);
       }
       // persist the serialized JSON
@@ -58,6 +58,8 @@ try {
 } catch (err) {
   logs.initError(err);
 }
+
+const subscriberHash = (email) => crypto.createHash("md5").update(email.toLowerCase()).digest("hex");
 
 exports.addUserToList = functions.handler.auth.user.onCreate(
   async (user) => {
@@ -112,16 +114,11 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
     }
 
     try {
-      const hashed = crypto
-        .createHash("md5")
-        .update(email)
-        .digest("hex");
-
-      logs.userRemoving(uid, hashed, config.mailchimpAudienceId);
+      logs.userRemoving(uid, subscriberHash(email), config.mailchimpAudienceId);
       await mailchimp.delete(
-        `/lists/${config.mailchimpAudienceId}/members/${hashed}`
+        `/lists/${config.mailchimpAudienceId}/members/${subscriberHash(email)}`
       );
-      logs.userRemoved(uid, hashed, config.mailchimpAudienceId);
+      logs.userRemoved(uid, subscriberHash(email), config.mailchimpAudienceId);
       logs.complete();
     } catch (err) {
       logs.errorRemoveUser(err);
@@ -129,8 +126,8 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
   }
 );
 
-exports.memberTagsHandler = functions.handler.firestore.document
-  .onWrite(async (event, context) => {
+exports.memberTagsHandler = functions.handler.firestore.document.onWrite(
+  async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMemberTags)) return null;
 
@@ -177,20 +174,20 @@ exports.memberTagsHandler = functions.handler.firestore.document
       const tagsToAdd = newTags.filter(tag => !prevTags.includes(tag)).map(tag => ({ name: tag, status: 'active' }));
       const tags = [...tagsToRemove, ...tagsToAdd];
 
-      // Compute the mailchimp subscriber email hash
-      const subscriberHash = crypto.createHash("md5").update(newDoc[tagsConfig.subscriberEmail]).digest("hex");
+      // Get email to compute the mailchimp subscriber email hash
+      const email = newDoc[tagsConfig.subscriberEmail];
 
       // Invoke mailchimp API with updated tags
       if (tags && tags.length) {
-        await mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}/tags`, { tags });
+        await mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash(email)}/tags`, { tags });
       }
     } catch (e) {
       functions.logger.log(e);
     }
   });
 
-exports.mergeFieldsHandler = functions.handler.firestore.document
-  .onWrite(async (event, context) => {
+exports.mergeFieldsHandler = functions.handler.firestore.document.onWrite(
+  async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMergeField)) return null;
 
@@ -212,6 +209,9 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
         return null;
       }
 
+      // Initialize an object for mailchimp request body
+      let params = {};
+
       // Get snapshot of document before & after write event
       const prevDoc = event && event.before && event.before.data();
       const newDoc = event && event.after && event.after.data();
@@ -228,25 +228,34 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
         return acc;
       }, {});
 
-      // Compute the mailchimp subscriber email hash
-      const subscriberHash = crypto.createHash("md5").update(newDoc[mergeFieldsConfig.subscriberEmail]).digest("hex");
+      if (!_.isEmpty(mergeFieldsToUpdate)) {
+        params.merge_fields = mergeFieldsToUpdate;
+      }
 
-      const params = {
-        email_address: newDoc[mergeFieldsConfig.subscriberEmail],
-        merge_fields: mergeFieldsToUpdate
-      };
+      if (mergeFieldsConfig.statusField) {
+        const prevStatus = !!_.get(prevDoc, mergeFieldsConfig.statusField, false);
+        const newStatus = !!_.get(newDoc, mergeFieldsConfig.statusField, false);
+
+        if (prevStatus !== newStatus) {
+          params.status = newStatus ? 'subscribed' : 'unsubscribed';
+        }
+      }
+
+      // Compute the mailchimp subscriber email hash
+      const email = newDoc[mergeFieldsConfig.subscriberEmail];
 
       // Invoke mailchimp API with updated tags
-      if (!_.isEmpty(mergeFieldsToUpdate)) {
-        await mailchimp.put(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}`, params);
+      if (!_.isEmpty(params)) {
+        params.email_address = email;
+        await mailchimp.put(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash(email)}`, params);
       }
     } catch (e) {
       functions.logger.log(e);
     }
   });
 
-exports.memberEventsHandler = functions.handler.firestore.document
-  .onWrite(async (event, context) => {
+exports.memberEventsHandler = functions.handler.firestore.document.onWrite(
+  async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMemberEvents)) return null;
 
@@ -290,13 +299,13 @@ exports.memberEventsHandler = functions.handler.firestore.document
       // Find the intersection of both collections
       const memberEvents = newEvents.filter(event => !prevEvents.includes(event));
 
-      // Compute the mailchimp subscriber email hash
-      const subscriberHash = crypto.createHash("md5").update(newDoc[eventsConfig.subscriberEmail]).digest("hex");
+      // Get email to compute the mailchimp subscriber email hash
+      const email = newDoc[eventsConfig.subscriberEmail];
 
       // Invoke mailchimp API with updated tags
       if (memberEvents && memberEvents.length) {
         const requests = memberEvents.reduce((acc, name) => {
-          acc.push(mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}/events`, { name }));
+          acc.push(mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash(email)}/events`, { name }));
           return acc;
         }, []);
         await Promise.all(requests);
