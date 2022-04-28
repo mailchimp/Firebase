@@ -33,7 +33,7 @@ describe("firebase functions", () => {
   };
 
   beforeEach(() => {
-    Object.entries(mailchimpMocks).forEach(([key, value]) => value.mockClear());
+    Object.values(mailchimpMocks).forEach((value) => value.mockClear());
   });
 
   afterAll(() => {
@@ -60,11 +60,37 @@ describe("firebase functions", () => {
       expect(mailchimpMocks.post).toHaveBeenCalledTimes(0);
     });
 
+    it("should make no calls when subscriberEmail field not found in document", async () => {
+      configureApi({
+        ...defaultConfig,
+        mailchimpMemberTags: JSON.stringify({
+          memberTags: ["tag_data_1"],
+          subscriberEmail: "email",
+        }),
+      });
+      const wrapped = testEnv.wrap(api.memberTagsHandler);
+
+      const testUser = {
+        displayName: "lee",
+        tag_data_1: "tagValue1",
+        tag_data_2: "tagValue2",
+      };
+
+      const result = await wrapped({
+        after: {
+          data: () => testUser,
+        },
+      });
+
+      expect(result).toBe(undefined);
+      expect(mailchimpMocks.post).toHaveBeenCalledTimes(0);
+    });
+
     it("should set tags for new user", async () => {
       configureApi({
         ...defaultConfig,
         mailchimpMemberTags: JSON.stringify({
-          memberTags: ["tags_data"],
+          memberTags: ["tag_data_1", "tag_data_2"],
           subscriberEmail: "emailAddress",
         }),
       });
@@ -74,10 +100,8 @@ describe("firebase functions", () => {
         uid: "122",
         displayName: "lee",
         emailAddress: "test@example.com",
-        tags_data: {
-          mytag1: "tagValue1",
-          mytag2: "tagValue2",
-        },
+        tag_data_1: "tagValue1",
+        tag_data_2: "tagValue2",
       };
 
       const result = await wrapped({
@@ -91,10 +115,8 @@ describe("firebase functions", () => {
         "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/tags",
         {
           tags: [
-            {
-              name: { mytag1: "tagValue1", mytag2: "tagValue2" },
-              status: "active",
-            },
+            { name: "tagValue1", status: "active" },
+            { name: "tagValue2", status: "active" },
           ],
         }
       );
@@ -104,7 +126,7 @@ describe("firebase functions", () => {
       configureApi({
         ...defaultConfig,
         mailchimpMemberTags: JSON.stringify({
-          memberTags: ["tags_data"],
+          memberTags: ["tag_data_1", "tag_data_2"],
           subscriberEmail: "emailAddress",
         }),
       });
@@ -114,20 +136,16 @@ describe("firebase functions", () => {
         uid: "122",
         displayName: "lee",
         emailAddress: "test@example.com",
-        tags_data: {
-          mytag1: "tagValue1",
-          mytag2: "tagValue2",
-        },
+        tag_data_1: "tagValue1",
+        tag_data_2: "tagValue2",
       };
 
       const updatedUser = {
         uid: "122",
         displayName: "lee",
         emailAddress: "test@example.com",
-        tags_data: {
-          mytag1: "tagValue3",
-          mytag2: "tagValue4",
-        },
+        tag_data_1: "tagValue3",
+        tag_data_2: "tagValue4",
       };
 
       const result = await wrapped({
@@ -144,14 +162,55 @@ describe("firebase functions", () => {
         "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/tags",
         {
           tags: [
-            {
-              name: { mytag1: "tagValue1", mytag2: "tagValue2" },
-              status: "inactive",
-            },
-            {
-              name: { mytag1: "tagValue3", mytag2: "tagValue4" },
-              status: "active",
-            },
+            { name: "tagValue1", status: "inactive" },
+            { name: "tagValue2", status: "inactive" },
+            { name: "tagValue3", status: "active" },
+            { name: "tagValue4", status: "active" },
+          ],
+        }
+      );
+    });
+
+    it("should update multiple tag fields", async () => {
+      configureApi({
+        ...defaultConfig,
+        mailchimpMemberTags: `{ "memberTags": ["tag_field_1", "tag_field_2", "tag_field_3"], "subscriberEmail": "email"}`,
+      });
+      const wrapped = testEnv.wrap(api.memberTagsHandler);
+
+      const existingUser = {
+        uid: "122",
+        displayName: "lee",
+        email: "test@example.com",
+      };
+
+      const updatedUser = {
+        uid: "122",
+        displayName: "lee",
+        email: "test@example.com",
+        tag_field_1: "data_1",
+        tag_field_2: ["data_2", "data_3"],
+        tag_field_3: "data_4",
+      };
+
+      const result = await wrapped({
+        before: {
+          data: () => existingUser,
+        },
+        after: {
+          data: () => updatedUser,
+        },
+      });
+
+      expect(result).toBe(undefined);
+      expect(mailchimpMocks.post).toHaveBeenCalledWith(
+        "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/tags",
+        {
+          tags: [
+            { name: "data_1", status: "active" },
+            { name: "data_2", status: "active" },
+            { name: "data_3", status: "active" },
+            { name: "data_4", status: "active" },
           ],
         }
       );
@@ -177,6 +236,39 @@ describe("firebase functions", () => {
       expect(result).toBe(null);
       expect(mailchimpMocks.post).toHaveBeenCalledTimes(0);
     });
+
+    it("should make no calls when subscriberEmail field not found in document", async () => {
+      configureApi({
+        ...defaultConfig,
+        mailchimpMergeField: JSON.stringify({
+          mergeFields: {
+            firstName: "FNAME",
+            lastName: "LNAME",
+            phoneNumber: "PHONE",
+          },
+          subscriberEmail: "emailAddress",
+        }),
+      });
+      const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+      const testUser = {
+        uid: "122",
+        displayName: "lee",
+        firstName: "new first name",
+        lastName: "new last name",
+        phoneNumber: "new phone number",
+      };
+
+      const result = await wrapped({
+        after: {
+          data: () => testUser,
+        },
+      });
+
+      expect(result).toBe(undefined);
+      expect(mailchimpMocks.post).toHaveBeenCalledTimes(0);
+    });
+
 
     it("should set data for user", async () => {
       configureApi({
