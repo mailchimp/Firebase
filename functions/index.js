@@ -182,7 +182,7 @@ exports.memberTagsHandler = functions.handler.firestore.document
       const tags = [...tagsToRemove, ...tagsToAdd];
 
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = crypto.createHash("md5").update(newDoc[tagsConfig.subscriberEmail]).digest("hex");
+      const subscriberHash = crypto.createHash("md5").update(_.get(newDoc, tagsConfig.subscriberEmail)).digest("hex");
 
       // Invoke mailchimp API with updated tags
       if (tags && tags.length) {
@@ -233,10 +233,10 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
       }, {});
 
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = crypto.createHash("md5").update(newDoc[mergeFieldsConfig.subscriberEmail]).digest("hex");
+      const subscriberHash = crypto.createHash("md5").update(_.get(newDoc, mergeFieldsConfig.subscriberEmail)).digest("hex");
 
       const params = {
-        email_address: newDoc[mergeFieldsConfig.subscriberEmail],
+        email_address: _.get(newDoc, mergeFieldsConfig.subscriberEmail),
         merge_fields: mergeFieldsToUpdate
       };
 
@@ -295,7 +295,7 @@ exports.memberEventsHandler = functions.handler.firestore.document
       const memberEvents = newEvents.filter(event => !prevEvents.includes(event));
 
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = crypto.createHash("md5").update(newDoc[eventsConfig.subscriberEmail]).digest("hex");
+      const subscriberHash = crypto.createHash("md5").update(_.get(newDoc, eventsConfig.subscriberEmail)).digest("hex");
 
       // Invoke mailchimp API with updated tags
       if (memberEvents && memberEvents.length) {
