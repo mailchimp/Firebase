@@ -122,6 +122,44 @@ describe("firebase functions", () => {
       );
     });
 
+    it("should set tags from nested config for new user", async () => {
+      configureApi({
+        ...defaultConfig,
+        mailchimpMemberTags: JSON.stringify({
+          memberTags: ["tag_data.field_1", "tag_data.field_2"],
+          subscriberEmail: "emailAddress",
+        }),
+      });
+      const wrapped = testEnv.wrap(api.memberTagsHandler);
+
+      const testUser = {
+        uid: "122",
+        displayName: "lee",
+        emailAddress: "test@example.com",
+        tag_data: {
+          field_1: "tagValue1",
+          field_2: "tagValue2",
+        },
+      };
+
+      const result = await wrapped({
+        after: {
+          data: () => testUser,
+        },
+      });
+
+      expect(result).toBe(undefined);
+      expect(mailchimpMocks.post).toHaveBeenCalledWith(
+        "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/tags",
+        {
+          tags: [
+            { name: "tagValue1", status: "active" },
+            { name: "tagValue2", status: "active" },
+          ],
+        }
+      );
+    });
+
     it("should update tags for changed user", async () => {
       configureApi({
         ...defaultConfig,
@@ -269,7 +307,6 @@ describe("firebase functions", () => {
       expect(mailchimpMocks.post).toHaveBeenCalledTimes(0);
     });
 
-
     it("should set data for user", async () => {
       configureApi({
         ...defaultConfig,
@@ -291,6 +328,51 @@ describe("firebase functions", () => {
         lastName: "new last name",
         phoneNumber: "new phone number",
         emailAddress: "test@example.com",
+      };
+
+      const result = await wrapped({
+        after: {
+          data: () => testUser,
+        },
+      });
+
+      expect(result).toBe(undefined);
+      expect(mailchimpMocks.put).toHaveBeenCalledWith(
+        "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0",
+        {
+          email_address: "test@example.com",
+          merge_fields: {
+            FNAME: "new first name",
+            LNAME: "new last name",
+            PHONE: "new phone number",
+          },
+        }
+      );
+    });
+
+    it("should set data from nested config for user", async () => {
+      configureApi({
+        ...defaultConfig,
+        mailchimpMergeField: JSON.stringify({
+          mergeFields: {
+            'userData.firstName': "FNAME",
+            'userData.lastName': "LNAME",
+            'userData.phoneNumber': "PHONE",
+          },
+          subscriberEmail: "emailAddress",
+        }),
+      });
+      const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+      const testUser = {
+        uid: "122",
+        displayName: "lee",
+        emailAddress: "test@example.com",
+        userData: {
+          firstName: "new first name",
+          lastName: "new last name",
+          phoneNumber: "new phone number",
+        }
       };
 
       const result = await wrapped({
