@@ -56,7 +56,6 @@ const processConfig = (configInput) => {
 let mailchimp;
 try {
   // Create a new Mailchimp object instance
-  console.log("Creating mailchimp instance!")
   mailchimp = new Mailchimp(config.mailchimpOAuthToken);
   processConfig(config)
   
