@@ -63,6 +63,8 @@ try {
   logs.initError(err);
 }
 
+const subscriberHasher = (email) => crypto.createHash("md5").update(email.toLowerCase()).digest("hex");
+
 exports.addUserToList = functions.handler.auth.user.onCreate(
   async (user) => {
     logs.start();
@@ -116,10 +118,7 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
     }
 
     try {
-      const hashed = crypto
-        .createHash("md5")
-        .update(email)
-        .digest("hex");
+      const hashed = subscriberHasher(email);
 
       logs.userRemoving(uid, hashed, config.mailchimpAudienceId);
       await mailchimp.delete(
@@ -182,7 +181,7 @@ exports.memberTagsHandler = functions.handler.firestore.document
       const tags = [...tagsToRemove, ...tagsToAdd];
 
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = crypto.createHash("md5").update(_.get(newDoc, tagsConfig.subscriberEmail)).digest("hex");
+      const subscriberHash = subscriberHasher(_.get(newDoc, tagsConfig.subscriberEmail));
 
       // Invoke mailchimp API with updated tags
       if (tags && tags.length) {
@@ -233,7 +232,7 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
       }, {});
 
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = crypto.createHash("md5").update(_.get(newDoc, mergeFieldsConfig.subscriberEmail)).digest("hex");
+      const subscriberHash = subscriberHasher(_.get(newDoc, mergeFieldsConfig.subscriberEmail));
 
       const params = {
         email_address: _.get(newDoc, mergeFieldsConfig.subscriberEmail),
@@ -295,7 +294,7 @@ exports.memberEventsHandler = functions.handler.firestore.document
       const memberEvents = newEvents.filter(event => !prevEvents.includes(event));
 
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = crypto.createHash("md5").update(_.get(newDoc, eventsConfig.subscriberEmail)).digest("hex");
+      const subscriberHash = subscriberHasher(_.get(newDoc, eventsConfig.subscriberEmail));
 
       // Invoke mailchimp API with updated tags
       if (memberEvents && memberEvents.length) {
