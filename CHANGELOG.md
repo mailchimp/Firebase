@@ -1,3 +1,9 @@
+## Version 0.2.4
+
+- List Mailchimp as an external service in Firebase Extensions configuration (PR #23)
+- Support for JSON path for subscriber email config values (PR #37)
+- Changed initialization process to facilitate user testing (PR #34)
+
 ## Version 0.2.3
 
 - Update extension name
