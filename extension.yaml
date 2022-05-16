@@ -44,6 +44,10 @@ contributors:
 
 billingRequired: true
 
+externalServices:
+  - name: Mailchimp
+    pricingUri: https://mailchimp.com/pricing
+
 resources:
   - name: addUserToList
     type: firebaseextensions.v1beta.function
