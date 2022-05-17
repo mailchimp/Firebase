@@ -14,15 +14,23 @@
  * limitations under the License.
  */
 
-const { logger } = require('firebase-functions');
-const config = require('./config');
+const { logger } = require("firebase-functions");
+const config = require("./config");
 
 module.exports = {
   complete: () => {
     logger.log("Completed execution of extension");
   },
+  userAlreadyInAudience: () => {
+    logger.log("Attempted added user already in mailchimp audience");
+  },
   errorAddUser: (err) => {
     logger.error("Error when adding user to Mailchimp audience", err);
+  },
+  userNotInAudience: () => {
+    logger.log(
+      "Attempted removal failed, member deletion not allowed. Probably because member has already been removed from audience"
+    );
   },
   errorRemoveUser: (err) => {
     logger.error("Error when removing user from Mailchimp audience", err);
@@ -61,5 +69,5 @@ module.exports = {
     logger.log(
       `Removing user: ${userId} with hashed email: ${hashedEmail} from Mailchimp audience: ${audienceId}`
     );
-  }
+  },
 };

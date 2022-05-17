@@ -97,7 +97,7 @@ exports.addUserToList = functions.handler.auth.user.onCreate(
       );
       logs.complete();
     } catch (err) {
-      logs.errorAddUser(err);
+      err.title === 'Member Exists' ? logs.userAlreadyInAudience( ) : logs.errorAddUser(err);
     }
   }
 );
@@ -127,7 +127,7 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
       logs.userRemoved(uid, hashed, config.mailchimpAudienceId);
       logs.complete();
     } catch (err) {
-      logs.errorRemoveUser(err);
+      err.title === 'Method Not Allowed' ? logs.userNotInAudience() : logs.errorRemoveUser(err);
     }
   }
 );
