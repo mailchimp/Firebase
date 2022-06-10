@@ -384,6 +384,7 @@ describe("firebase functions", () => {
             LNAME: "new last name",
             PHONE: "new phone number",
           },
+          status_if_new: "mailchimpContactStatus",
         }
       );
     });
@@ -429,6 +430,7 @@ describe("firebase functions", () => {
             LNAME: "new last name",
             PHONE: "new phone number",
           },
+          status_if_new: "mailchimpContactStatus",
         }
       );
     });
@@ -474,6 +476,7 @@ describe("firebase functions", () => {
             LNAME: "new last name",
             PHONE: "new phone number",
           },
+          status_if_new: "mailchimpContactStatus",
         }
       );
     });
@@ -527,6 +530,7 @@ describe("firebase functions", () => {
             FNAME: "new first name",
             LNAME: "new last name",
           },
+          status_if_new: "mailchimpContactStatus",
         }
       );
     });
