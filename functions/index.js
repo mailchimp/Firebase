@@ -235,6 +235,7 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
       const subscriberHash = subscriberHasher(_.get(newDoc, mergeFieldsConfig.subscriberEmail));
 
       const params = {
+        status_if_new: config.mailchimpContactStatus,
         email_address: _.get(newDoc, mergeFieldsConfig.subscriberEmail),
         merge_fields: mergeFieldsToUpdate
       };
