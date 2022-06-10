@@ -44,6 +44,10 @@ contributors:
 
 billingRequired: true
 
+externalServices:
+  - name: Mailchimp
+    pricingUri: https://mailchimp.com/pricing
+
 resources:
   - name: addUserToList
     type: firebaseextensions.v1beta.function
@@ -129,6 +133,8 @@ params:
         value: us-west3
       - label: Las Vegas (us-west4)
         value: us-west4
+      - label: Warsaw (europe-central2)
+        value: europe-central2
       - label: Belgium (europe-west1)
         value: europe-west1
       - label: London (europe-west2)

@@ -16,31 +16,27 @@ const CONFIG_PARAM_NAMES = Object.freeze([
 admin.initializeApp();
 logs.init();
 
-let mailchimp;
-try {
-  // Create a new Mailchimp object instance
-  mailchimp = new Mailchimp(config.mailchimpOAuthToken);
-
-  // extension.yaml receives serialized JSON inputs representing configuration settings for merge fields, tags, and custom events
+const processConfig = (configInput) => {
+// extension.yaml receives serialized JSON inputs representing configuration settings for merge fields, tags, and custom events
   // the following code deserialized the JSON inputs and builds a configuration object with each custom setting path (tags, merge fields, custom events) at the root.
-  config = Object.entries(config).reduce((acc, [key, value]) => {
+  config = Object.entries(configInput).reduce((acc, [key, value]) => {
     const logError = message => {
-      functions.logger.log(message);
+      functions.logger.log(message, key, value);
       return acc;
     }
-    if (config[key] && CONFIG_PARAM_NAMES.includes(key)) {
-      const parsedConfig = JSON.parse(config[key]);
-      if (!config[`${key}WatchPath`]) {
+    if (configInput[key] && CONFIG_PARAM_NAMES.includes(key)) {
+      const parsedConfig = JSON.parse(configInput[key]);
+      if (!configInput[`${key}WatchPath`]) {
         // Firebase functions must listen to a document path
         // As such, a specific id (users/marie) or wildcard path (users/{userId}) must be specified
         // https://firebase.google.com/docs/firestore/extend-with-functions#wildcards-parameters
         logError(`${key}WatchPath config property is undefined. Please ensure a proper watch path param has been provided.`);
       }
-      if (config[`${key}WatchPath`] === 'N/A') {
+      if (configInput[`${key}WatchPath`] === 'N/A') {
         // The Firebase platform requires a watch path to be provided conforming to a regular expression string/string
         // However, given this Mailchimp extension represents a suite of features, it's possible a user will not utilize all of them
         // As such, when a watch path of "N/A" is provided as input, it serves as an indicator to skip this feature and treat the function as NO-OP.
-        logError(`${key}WatchPath property is N/A. Setting ${config[key]} cloud function as NO-OP.`);
+        logError(`${key}WatchPath property is N/A. Setting ${configInput[key]} cloud function as NO-OP.`);
       }
       // Each feature config must include a property called "subscriberEmail"
       // which maps to the mailchimp user email in the Firestore document
@@ -55,9 +51,19 @@ try {
     }
     return acc;
   }, {});
+}
+
+let mailchimp;
+try {
+  // Create a new Mailchimp object instance
+  mailchimp = new Mailchimp(config.mailchimpOAuthToken);
+  processConfig(config)
+  
 } catch (err) {
   logs.initError(err);
 }
+
+const subscriberHasher = (email) => crypto.createHash("md5").update(email.toLowerCase()).digest("hex");
 
 exports.addUserToList = functions.handler.auth.user.onCreate(
   async (user) => {
@@ -91,7 +97,7 @@ exports.addUserToList = functions.handler.auth.user.onCreate(
       );
       logs.complete();
     } catch (err) {
-      logs.errorAddUser(err);
+      err.title === 'Member Exists' ? logs.userAlreadyInAudience( ) : logs.errorAddUser(err);
     }
   }
 );
@@ -112,10 +118,7 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
     }
 
     try {
-      const hashed = crypto
-        .createHash("md5")
-        .update(email)
-        .digest("hex");
+      const hashed = subscriberHasher(email);
 
       logs.userRemoving(uid, hashed, config.mailchimpAudienceId);
       await mailchimp.delete(
@@ -124,7 +127,7 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
       logs.userRemoved(uid, hashed, config.mailchimpAudienceId);
       logs.complete();
     } catch (err) {
-      logs.errorRemoveUser(err);
+      err.title === 'Method Not Allowed' ? logs.userNotInAudience() : logs.errorRemoveUser(err);
     }
   }
 );
@@ -178,7 +181,7 @@ exports.memberTagsHandler = functions.handler.firestore.document
       const tags = [...tagsToRemove, ...tagsToAdd];
 
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = crypto.createHash("md5").update(newDoc[tagsConfig.subscriberEmail]).digest("hex");
+      const subscriberHash = subscriberHasher(_.get(newDoc, tagsConfig.subscriberEmail));
 
       // Invoke mailchimp API with updated tags
       if (tags && tags.length) {
@@ -229,11 +232,11 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
       }, {});
 
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = crypto.createHash("md5").update(newDoc[mergeFieldsConfig.subscriberEmail]).digest("hex");
+      const subscriberHash = subscriberHasher(_.get(newDoc, mergeFieldsConfig.subscriberEmail));
 
       const params = {
-        email_address: newDoc[mergeFieldsConfig.subscriberEmail],
         status_if_new: config.mailchimpContactStatus,
+        email_address: _.get(newDoc, mergeFieldsConfig.subscriberEmail),
         merge_fields: mergeFieldsToUpdate
       };
 
@@ -292,7 +295,7 @@ exports.memberEventsHandler = functions.handler.firestore.document
       const memberEvents = newEvents.filter(event => !prevEvents.includes(event));
 
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = crypto.createHash("md5").update(newDoc[eventsConfig.subscriberEmail]).digest("hex");
+      const subscriberHash = subscriberHasher(_.get(newDoc, eventsConfig.subscriberEmail));
 
       // Invoke mailchimp API with updated tags
       if (memberEvents && memberEvents.length) {
@@ -306,3 +309,5 @@ exports.memberEventsHandler = functions.handler.firestore.document
       functions.logger.log(e);
     }
   });
+
+exports.processConfig = processConfig
