@@ -1,10 +1,11 @@
-## Version 0.2.4
+## Version 0.3.0
 
 - List Mailchimp as an external service in Firebase Extensions configuration (PR #23)
 - Support for JSON path for subscriber email config values (PR #37)
 - Changed initialization process to facilitate user testing (PR #34)
 - Use status_if_new with merge fields updates in case user has not yet been created in Mailchimp (PR #20)
 - Added unit test setup for easier verification of features (PR #34)
+- Add Warsaw cloud function location (europe-central2) (#16)
 
 ## Version 0.2.3
 
