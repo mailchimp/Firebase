@@ -232,7 +232,7 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
       }, {});
 
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = subscriberHasher(_.get(newDoc, mergeFieldsConfig.subscriberEmail));
+      const subscriberHash = subscriberHasher(_.get(prevDoc, mergeFieldsConfig.subscriberEmail, false) || _.get(newDoc, mergeFieldsConfig.subscriberEmail));
 
       const params = {
         status_if_new: config.mailchimpContactStatus,
