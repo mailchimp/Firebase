@@ -1,5 +1,5 @@
 
-const mailchimpMocks = { post: jest.fn(), put: jest.fn() };
+const mailchimpMocks = { post: jest.fn(), put: jest.fn(), delete: jest.fn() };
 const mailchimpMock = jest.fn().mockImplementation(() => {
   return mailchimpMocks;
 });
