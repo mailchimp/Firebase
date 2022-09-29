@@ -13,7 +13,7 @@
 # limitations under the License.
 
 name: mailchimp-firebase-sync
-version: 0.3.0
+version: 0.4.0
 specVersion: v1beta
 
 displayName: Manage Marketing with Mailchimp
@@ -56,7 +56,7 @@ resources:
       then automatically adds the new user to your specified MailChimp audience.
     properties:
       location: ${LOCATION}
-      runtime: nodejs12
+      runtime: nodejs16
       eventTrigger:
         eventType: providers/firebase.auth/eventTypes/user.create
         resource: projects/${PROJECT_ID}
@@ -69,7 +69,7 @@ resources:
       MailChimp audience.
     properties:
       location: ${LOCATION}
-      runtime: nodejs12
+      runtime: nodejs16
       eventTrigger:
         eventType: providers/firebase.auth/eventTypes/user.delete
         resource: projects/${PROJECT_ID}
@@ -82,7 +82,7 @@ resources:
       then automatically classifies the document data as Mailchimp subscriber tags.
     properties:
       location: ${LOCATION}
-      runtime: nodejs12
+      runtime: nodejs16
       eventTrigger:
         eventType: providers/cloud.firestore/eventTypes/document.write
         resource: projects/${param:PROJECT_ID}/databases/(default)/documents/${param:MAILCHIMP_MEMBER_TAGS_WATCH_PATH}/{documentId}
@@ -95,7 +95,7 @@ resources:
       then automatically populates the Mailchimp subscriber's respective merge fields.
     properties:
       location: ${LOCATION}
-      runtime: nodejs12
+      runtime: nodejs16
       eventTrigger:
         eventType: providers/cloud.firestore/eventTypes/document.write
         resource: projects/${param:PROJECT_ID}/databases/(default)/documents/${param:MAILCHIMP_MERGE_FIELDS_WATCH_PATH}/{documentId}
@@ -109,7 +109,7 @@ resources:
       which can subsequently trigger automation workflows.
     properties:
       location: ${LOCATION}
-      runtime: nodejs12
+      runtime: nodejs16
       eventTrigger:
         eventType: providers/cloud.firestore/eventTypes/document.write
         resource: projects/${param:PROJECT_ID}/databases/(default)/documents/${param:MAILCHIMP_MEMBER_EVENTS_WATCH_PATH}/{documentId}
