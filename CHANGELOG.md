@@ -1,3 +1,8 @@
+## Version 0.4.0
+
+- Runtime and dependencies bump (#45)
+- Added test coverage for all handlers (#47)
+
 ## Version 0.3.0
 
 - List Mailchimp as an external service in Firebase Extensions configuration (PR #23)
