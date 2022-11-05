@@ -159,9 +159,16 @@ exports.memberTagsHandler = functions.handler.firestore.document
       const prevDoc = event && event.before && event.before.data();
       const newDoc = event && event.after && event.after.data();
 
+      // Check if we are dealing with a multidimensional array
+      const isMultidimensional = (tag) =>
+        typeof tag === "object" && typeof tag.path !== "undefined" && typeof tag.key !== "undefined"
+
       // Retrieves subscriber tags before/after write event
       const getTagsFromEventSnapshot = snapshot => tagsConfig.memberTags.reduce((acc, tag) => {
-        const tags = _.get(snapshot, tag);
+        const tags = isMultidimensional(tag)
+          ? _.get(snapshot, tag.path).map((parent) => parent[tag.key])
+          : _.get(snapshot, tag);
+          
         if (Array.isArray(tags) && tags && tags.length) {
           acc = [...acc, ...tags];
         } else if (tags) {

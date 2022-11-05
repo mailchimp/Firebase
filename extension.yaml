@@ -220,7 +220,7 @@ params:
 
       1) `memberTags` - The Firestore document fields(s) to retrieve data from and classify as subscriber tags in Mailchimp. Acceptable data types include:
       
-      - Array\<String\> - The extension will lookup the values in the provided fields and update the subscriber's member tags with the respective data values.
+      - Array\<String | { path: String, key: String }\> - The extension will lookup the values in the provided fields and update the subscriber's member tags with the respective data values.
 
 
       - String - The extension will lookup the value in the provided field and update the subscriber's member tags with the provided value.
