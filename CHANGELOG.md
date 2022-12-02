@@ -1,3 +1,7 @@
+## Version 0.5.4
+
+- Add lifecycle event to add existing users to a Mailchimp audience.
+
 ## Version 0.5.3
 
 - Addressed [breaking change in Google Cloud Functions](https://cloud.google.com/functions/docs/release-notes#April_11_2023) where the build command would run on function deployment (PR #65).

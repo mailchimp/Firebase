@@ -70,4 +70,9 @@ module.exports = {
       `Removing user: ${userId} with hashed email: ${hashedEmail} from Mailchimp audience: ${audienceId}`
     );
   },
+  backfillComplete: (successCount, errorCount) => {
+    logger.log(
+      `Finished adding existing users to Mailchimp audience. ${successCount} users added, ${errorCount} errors.`
+    );
+  },
 };

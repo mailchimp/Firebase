@@ -13,7 +13,7 @@
 # limitations under the License.
 
 name: mailchimp-firebase-sync
-version: 0.5.3
+version: 0.5.4
 specVersion: v1beta
 
 displayName: Manage Marketing with Mailchimp
@@ -116,6 +116,15 @@ resources:
       eventTrigger:
         eventType: providers/cloud.firestore/eventTypes/document.write
         resource: projects/${param:PROJECT_ID}/databases/(default)/documents/${param:MAILCHIMP_MEMBER_EVENTS_WATCH_PATH}/{documentId}
+
+  - name: addExistingUsersToList
+    type: firebaseextensions.v1beta.function
+    description:
+      Adds existing users into the specified Mailchimp audience.
+    properties:
+      location: ${param:LOCATION}
+      runtime: nodejs16
+      taskQueueTrigger: {}
 
 params:
   - param: LOCATION
@@ -504,3 +513,26 @@ params:
 
     required: true
     default: '{}'
+
+  - param: DO_BACKFILL
+    label: Import existing users into Mailchimp audience
+    description: >-
+      Do you want to add existing users to the Mailchimp audience when you install or update this extension?
+    type: select
+    required: true
+    options:
+      - label: Yes
+        value: true
+      - label: No
+        value: false
+
+lifecycleEvents:
+  onInstall:
+    function: addExistingUsersToList
+    processingMessage: "Adding existing users to audience ${param:MAILCHIMP_AUDIENCE_ID}"
+  onUpdate:
+    function: addExistingUsersToList
+    processingMessage: "Adding existing users to audience ${param:MAILCHIMP_AUDIENCE_ID}"
+  onConfigure:
+    function: addExistingUsersToList
+    processingMessage: "Adding existing users to audience ${param:MAILCHIMP_AUDIENCE_ID}"
