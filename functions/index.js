@@ -1,8 +1,12 @@
 const crypto = require('crypto');
 const _ = require('lodash');
 const functions = require('firebase-functions');
-const admin = require('firebase-admin');
 const Mailchimp = require('mailchimp-api-v3');
+
+const { initializeApp } = require('firebase-admin/app')
+const { getAuth } =  require("firebase-admin/auth");
+const { getExtensions } = require('firebase-admin/extensions');
+const { getFunctions } = require('firebase-admin/functions');
 
 let config = require('./config');
 const logs = require('./logs');
@@ -13,7 +17,7 @@ const CONFIG_PARAM_NAMES = Object.freeze([
   'mailchimpMemberEvents'
 ]);
 
-admin.initializeApp();
+initializeApp();
 logs.init();
 
 const processConfig = (configInput) => {
@@ -307,6 +311,95 @@ exports.memberEventsHandler = functions.handler.firestore.document
       }
     } catch (e) {
       functions.logger.log(e);
+    }
+  });
+
+exports.addExistingUsersToList = functions.tasks
+  .taskQueue()
+  .onDispatch(async (data) => {
+    const runtime = getExtensions().runtime();
+    if (!config.doBackfill) {
+      await runtime.setProcessingState(
+        "PROCESSING_COMPLETE",
+        "No processing requested."
+      );
+      return;
+    }
+    const nextPageToken = data.nextPageToken;
+    const pastSuccessCount = parseInt(data["successCount"]) ?? 0;
+    const pastErrorCount = parseInt(data["errorCount"]) ?? 0;
+
+    const res = await getAuth().listUsers(100, nextPageToken);
+    const mailchimpPromises = res.users.map(async (user) => {
+      const { email, uid } = user;
+      if (!email) {
+        logs.userNoEmail();
+        return;
+      }
+
+      try {
+        logs.userAdding(uid, config.mailchimpAudienceId);
+        const results = await mailchimp.post(
+          `/lists/${config.mailchimpAudienceId}/members`,
+          {
+            email_address: email,
+            status: config.mailchimpContactStatus,
+          }
+        );
+        logs.userAdded(
+          uid,
+          config.mailchimpAudienceId,
+          results.id,
+          config.mailchimpContactStatus
+        );
+      } catch (err) {
+        if (err.title === 'Member Exists' ) {
+          logs.userAlreadyInAudience(uid, config.mailchimpAudienceId);
+          // Don't throw error if the memeber already exists.
+        } else {
+          logs.errorAddUser(err);
+          // For other errors, rethrow them so that we can report the total number at the end of the lifecycle event.
+          throw err;
+        }
+      }
+    });
+    const results = await Promise.allSettled(mailchimpPromises);
+    const newSucessCount =
+      pastSuccessCount + results.filter((p) => p.status === "fulfilled").length;
+    const newErrorCount =
+      pastErrorCount + results.filter((p) => p.status === "rejected").length;
+    if (res.pageToken) {
+      // If there is a pageToken, we have more users to add, so we enqueue another task.
+      const queue = getFunctions().taskQueue(
+        "addExistingUsersToList",
+        process.env.EXT_INSTANCE_ID
+      );
+      await queue.enqueue({
+        nextPageToken: res.pageToken,
+        successCount: newSucessCount,
+        errorCount: newErrorCount,
+      });
+    } else {
+      // The backfill is complete, now we need to set the processing state.
+      logs.backfillComplete(newSucessCount, newErrorCount);
+      if (newErrorCount === 0) {
+        await runtime.setProcessingState(
+          "PROCESSING_COMPLETE",
+          `${newSucessCount} users added (or already existed) in Mailchimp audience ${config.mailchimpAudienceId}.`
+        );
+      } else if (newErrorCount > 0 && newSucessCount > 0) {
+        await runtime.setProcessingState(
+          "PROCESSING_WARNING",
+          `${newSucessCount} users added (or already existed) in Mailchimp audience ${config.mailchimpAudienceId}, ` +
+            `failed to add ${newErrorCount} users.  Check function logs for more information.`
+        );
+      }
+      if (newErrorCount > 0 && newSucessCount === 0) {
+        await runtime.setProcessingState(
+          "PROCESSING_FAILED",
+          `Failed to add ${newErrorCount} users to ${config.mailchimpAudienceId}. Check function logs for more information.`
+        );
+      }
     }
   });
 

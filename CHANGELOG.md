@@ -1,3 +1,7 @@
+## Version 0.4.1
+
+- Add lifecycle event to add existing users to a Mailchimp audience.
+
 ## Version 0.4.0
 
 - Runtime and dependencies bump (#45)
