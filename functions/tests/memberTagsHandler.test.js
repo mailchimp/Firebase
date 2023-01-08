@@ -232,6 +232,55 @@ describe("memberTagsHandler", () => {
     );
   });
 
+  it("should use old email for hash if email field changed", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMemberTags: JSON.stringify({
+        memberTags: ["tag_data_1", "tag_data_2"],
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.memberTagsHandler);
+
+    const existingUser = {
+      uid: "122",
+      displayName: "lee",
+      emailAddress: "test@example.com",
+      tag_data_1: "tagValue1",
+      tag_data_2: "tagValue2",
+    };
+
+    const updatedUser = {
+      uid: "122",
+      displayName: "lee",
+      emailAddress: "test2@example.com",
+      tag_data_1: "tagValue3",
+      tag_data_2: "tagValue4",
+    };
+
+    const result = await wrapped({
+      before: {
+        data: () => existingUser,
+      },
+      after: {
+        data: () => updatedUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith(
+      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/tags",
+      {
+        tags: [
+          { name: "tagValue1", status: "inactive" },
+          { name: "tagValue2", status: "inactive" },
+          { name: "tagValue3", status: "active" },
+          { name: "tagValue4", status: "active" },
+        ],
+      }
+    );
+  });
+
   it("should update multiple tag fields", async () => {
     configureApi({
       ...defaultConfig,
