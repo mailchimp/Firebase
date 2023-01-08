@@ -1,3 +1,8 @@
+## Version 0.5.0
+
+- Support updating Mailchimp when a user changes their email in Firebase (PR #46)
+
+
 ## Version 0.4.0
 
 - Runtime and dependencies bump (#45)
