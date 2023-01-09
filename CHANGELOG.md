@@ -1,7 +1,7 @@
 ## Version 0.5.0
 
 - Support updating Mailchimp when a user changes their email in Firebase (PR #46)
-
+- Support extended syntax for configurations of Member Tags and Member Events, to allow multidimensional arrays to be unwrapped. 
 
 ## Version 0.4.0
 
