@@ -40,7 +40,7 @@ const processConfig = (configInput) => {
       }
       // Each feature config must include a property called "subscriberEmail"
       // which maps to the mailchimp user email in the Firestore document
-      if (!parsedConfig.subscriberEmail) {
+      if (!_.isEmpty(parsedConfig) && !parsedConfig.subscriberEmail) {
         logError(`${key} requires a property named 'subscriberEmail'`);
       }
       // persist the serialized JSON
@@ -239,12 +239,15 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
       const newDoc = event && event.after && event.after.data();
 
       // Determine all the merge prior to write event
-      const mergeFieldsToUpdate = Object.entries(mergeFieldsConfig.mergeFields).reduce((acc, [docFieldName, mergeFieldName]) => {
-        const prevMergeFieldValue = _.get(prevDoc, docFieldName);
+      const mergeFieldsToUpdate = Object.entries(mergeFieldsConfig.mergeFields).reduce((acc, [documentPath, mergeFieldConfig]) => {
+        const mergeFieldName = _.isObject(mergeFieldConfig) ? mergeFieldConfig.mailchimpFieldName : mergeFieldConfig;
+        
+        const prevMergeFieldValue = _.get(prevDoc, documentPath);
         // lookup the same field value in new snapshot
-        const newMergeFieldValue = _.get(newDoc, docFieldName, '');
-        // if delta exists, then update accumulator collection
-        if (prevMergeFieldValue !== newMergeFieldValue) {
+        const newMergeFieldValue = _.get(newDoc, documentPath, '');
+
+        // if delta exists or the field should always be sent, then update accumulator collection
+        if (prevMergeFieldValue !== newMergeFieldValue || (_.isObject(mergeFieldConfig) && mergeFieldConfig.when && mergeFieldConfig.when === "always")) {
           acc[mergeFieldName] = newMergeFieldValue;
         }
         return acc;
