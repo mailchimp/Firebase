@@ -184,6 +184,15 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
     } 
     ```
 
+    Or via equivalent extended syntax:
+
+    ```json
+    {
+      "memberEvents": [{ "documentPath": "activity" }],
+      "subscriberEmail": "emailAddress"
+    } 
+    ```
+
     Based on the sample configuration, if the following Firestore document is provided:
 
     ```json
@@ -199,7 +208,7 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
     } 
     ```
 
-    Any data associated with the mapped fields will be considered Merge Fields and the Mailchimp user's profile will be updated accordingly.
+    Any data associated with the mapped fields (i.e. `activity`) will be considered events and the Mailchimp user's profile will be updated accordingly.
 
     For complex documents such as:
 
