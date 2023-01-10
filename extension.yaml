@@ -219,29 +219,36 @@ params:
       Required Fields:
 
       1) `memberTags` - The Firestore document fields(s) to retrieve data from and classify as subscriber tags in Mailchimp. Acceptable data types include:
-      
-      - Array\<String\> - The extension will lookup the values in the provided fields and update the subscriber's member tags with the respective data values.
+          
+      - Array\<String\> - The extension will lookup the values in the provided fields and update the subscriber's member tags with the respective data values. This additionally accepts nested object paths. e.g. ["primaryTags", "additionalTags", "tags.primary"]
 
-
-      - String - The extension will lookup the value in the provided field and update the subscriber's member tags with the provided value.
-
+      - Array\<Object\> - An extended object configuration is supported with the following fields:
+          - `documentPath` - (required) The path to the field in the document containing tag/s. This additionally accepts nested object paths. e.g. "primaryTags", "tags.primary".
+          - `valueSelector` - (optional) An additional path for unwrapping tags from multi-dimensional arrays. e.g. "tagName".
 
       2) `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
 
-
       Configuration Example:
 
-      ```
+      ```json
       {
         "memberTags": ["domainKnowledge", "jobTitle"],
         "subscriberEmail": "emailAddress"
-      }
+      } 
       ```
 
+      Or via equivalent extended syntax:
 
-      Based on the sample configuration, if the following Firestore document is provided: 
-      
+      ```json
+      {
+        "memberTags": [{ "documentPath": "domainKnowledge" }, { "documentPath": "jobTitle" }],
+        "subscriberEmail": "emailAddress"
+      } 
       ```
+
+      Based on the sample configuration, if the following Firestore document is provided:
+
+      ```json
       {
         "firstName": "..",
         "lastName": "..",
@@ -251,12 +258,36 @@ params:
         "jobTitle": "..", // The config property 'memberTags' maps to this document field
         "domainKnowledge": "..", // The config property 'memberTags' maps to this document field
         "activity": []
-      }
+      } 
       ```
 
+      Any data associated with the mapped fields (i.e. `domainKnowledge` and `jobTitle`) will be considered Member Tags and the Mailchimp user's profile will be updated accordingly.
 
-      Any data associated with the mapped fields will be considered Member Tags and the Mailchimp user's profile will be updated accordingly.
+      For complex documents such as:
 
+      ```json
+      {
+        "emailAddress": "..", // The config property 'subscriberEmail' maps to this document field
+        "meta": {
+          "tags": [{
+            "label": "Red",
+            "value": "red"
+          },{
+            "label": "Team 1",
+            "value": "team1"
+          }]
+        }
+      } 
+      ```
+
+      A configuration of the following will allow for the tag values of "red", "team1" to be sent to Mailchimp:
+
+      ```json
+      {
+        "memberTags": [{ "documentPath": "meta.tags", "valueSelector": "value" }],
+        "subscriberEmail": "emailAddress"
+      } 
+      ```
 
       NOTE: To disable this cloud function listener, provide an empty JSON config `{}`.
 
@@ -344,30 +375,37 @@ params:
 
       1) `memberEvents` - The Firestore document fields(s) to retrieve data from and classify as member events in Mailchimp. Acceptable data types include:
       
-      - Array\<String\> - The extension will lookup the values (mailchimp event names) in the provided fields and post those events to Mailchimp on the subscriber's activity feed.
+      - Array\<String\> - The extension will lookup the values (mailchimp event names) in the provided fields and post those events to Mailchimp on the subscriber's activity feed. This additionally accepts nested object paths. e.g. ["events", "meta.events"]
 
-
-      - String - The extension will lookup the value (mailchimp event name) in this specific field and post the event to Mailchimp on the subscriber's activity feed.
-
+      - Array\<Object\> - An extended object configuration is supported with the following fields:
+          - `documentPath` - (required) The path to the field in the document containing events. This additionally accepts nested object paths. e.g. "events", "meta.events".
+          - `valueSelector` - (optional) An additional path for unwrapping events from multi-dimensional arrays. e.g. "title".
 
       2) `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
 
-
       Configuration Example:
 
-      ```
+      ```json
       {
         "memberEvents": [
           "activity"
         ],
         "subscriberEmail": "emailAddress"
-      }
+      } 
       ```
 
+      Or via equivalent extended syntax:
 
-      Based on the sample configuration, if the following Firestore document is provided: 
-      
+      ```json
+      {
+        "memberEvents": [{ "documentPath": "activity" }],
+        "subscriberEmail": "emailAddress"
+      } 
       ```
+
+      Based on the sample configuration, if the following Firestore document is provided:
+
+      ```json
       {
         "firstName": "..",
         "lastName": "..",
@@ -377,12 +415,36 @@ params:
         "domainKnowledge": "..",
         "emailAddress": "..", // The config property "subscriberEmail" maps to this document field
         "activity": ["send_welcome_email"] // The config property "memberTags" maps to this document field
-      }
+      } 
       ```
 
+      Any data associated with the mapped fields (i.e. `activity`) will be considered events and the Mailchimp user's profile will be updated accordingly.
 
-      Any data associated with the mapped fields will be considered Merge Fields and the Mailchimp user's profile will be updated accordingly.
+      For complex documents such as:
 
+      ```json
+      {
+        "emailAddress": "..", // The config property 'subscriberEmail' maps to this document field
+        "meta": {
+          "events": [{
+            "title": "Registered",
+            "date": "2021-10-08T00:00:00Z"
+          },{
+            "title": "Invited Friend",
+            "date": "2021-10-09T00:00:00Z"
+          }]
+        }
+      } 
+      ```
+
+      A configuration of the following will allow for the events of "Registered", "Invited Friend" to be sent to Mailchimp:
+
+      ```json
+      {
+        "memberEvents": [{ "documentPath": "meta.events", "valueSelector": "title" }],
+        "subscriberEmail": "emailAddress"
+      } 
+      ```
 
       NOTE: To disable this cloud function listener, provide an empty JSON config `{}`.
 

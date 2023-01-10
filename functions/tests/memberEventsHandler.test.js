@@ -44,6 +44,56 @@ describe("memberEventsHandler", () => {
     expect(result).toBe(null);
     expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
   });
+
+  it("should make no calls with config missing memberEvents", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMemberEvents: JSON.stringify({
+        subscriberEmail: "emailAddress",
+      })
+    });
+    const wrapped = testEnv.wrap(api.memberEventsHandler);
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(null);
+    expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
+  });
+
+  it("should make no calls with config specifying invalid memberEvents", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMemberEvents: JSON.stringify({
+        memberEvents: [{ field1: "test"}],
+        subscriberEmail: "emailAddress",
+      })
+    });
+    const wrapped = testEnv.wrap(api.memberEventsHandler);
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+      emailAddress: "email",
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(null);
+    expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
+  });
   
 
   it("should add string events when none were existing", async () => {
