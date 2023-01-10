@@ -5,6 +5,7 @@
 - Added configuration validation via JSON Schema (PR #54)
 - Support extended configuration for Merge Fields, so that fields can be set to continuously sync even when not changed (PR #55)
 - Dependencies bump (#56)
+- Support updating mailchimp subscription status via merge field trigger (PR #56)
 
 ## Version 0.4.0
 

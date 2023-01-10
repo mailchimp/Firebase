@@ -104,6 +104,42 @@ describe("mergeFieldsHandler", () => {
     expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
   });
 
+  it("should make no calls with invalid statusField", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+          phoneNumber: "PHONE",
+        },
+        statusField: {
+          field1: "value"
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "new first name",
+      lastName: "new last name",
+      phoneNumber: "new phone number",
+      emailAddress: "test@example.com",
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(null);
+    expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
+  });
+
   it("should make no calls when subscriberEmail field not found in document", async () => {
     configureApi({
       ...defaultConfig,
@@ -484,6 +520,163 @@ describe("mergeFieldsHandler", () => {
           LNAME: "new last name",
         },
         status_if_new: "mailchimpContactStatus",
+      }
+    );
+  });
+
+  it("should update the status of the user, with no transformation", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+        },
+        statusField: {
+          documentPath: "statusField"
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const beforeUser = {
+      uid: "122",
+      firstName: "first name",
+      lastName: "last name",
+      statusField: "transactional",
+      emailAddress: "test@example.com",
+    };
+    const afterUser = {
+      uid: "122",
+      firstName: "first name",
+      lastName: "last name",
+      statusField: "pending",
+      emailAddress: "test@example.com",
+    };
+
+    const result = await wrapped({
+      before: {
+        data: () => beforeUser,
+      },
+      after: {
+        data: () => afterUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimpMock.__mocks.put).toHaveBeenCalledWith(
+      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0",
+      {
+        email_address: "test@example.com",
+        status: "pending",
+        status_if_new: "pending",
+      }
+    );
+  });
+
+
+  it("should update the status of the user, with boolean transformation to subscribed", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+        },
+        statusField: {
+          documentPath: "subscribed",
+          statusFormat: "boolean"
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const beforeUser = {
+      uid: "122",
+      firstName: "first name",
+      lastName: "last name",
+      subscribed: false,
+      emailAddress: "test@example.com",
+    };
+    const afterUser = {
+      uid: "122",
+      firstName: "first name",
+      lastName: "last name",
+      subscribed: true,
+      emailAddress: "test@example.com",
+    };
+
+    const result = await wrapped({
+      before: {
+        data: () => beforeUser,
+      },
+      after: {
+        data: () => afterUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimpMock.__mocks.put).toHaveBeenCalledWith(
+      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0",
+      {
+        email_address: "test@example.com",
+        status: "subscribed",
+        status_if_new: "subscribed",
+      }
+    );
+  });
+
+
+  it("should update the status of the user, with boolean transformation to unsubscribed", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+        },
+        statusField: {
+          documentPath: "subscribed",
+          statusFormat: "boolean"
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const beforeUser = {
+      uid: "122",
+      firstName: "first name",
+      lastName: "last name",
+      subscribed: true,
+      emailAddress: "test@example.com",
+    };
+    const afterUser = {
+      uid: "122",
+      firstName: "first name",
+      lastName: "last name",
+      subscribed: false,
+      emailAddress: "test@example.com",
+    };
+
+    const result = await wrapped({
+      before: {
+        data: () => beforeUser,
+      },
+      after: {
+        data: () => afterUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimpMock.__mocks.put).toHaveBeenCalledWith(
+      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0",
+      {
+        email_address: "test@example.com",
+        status: "unsubscribed",
+        status_if_new: "unsubscribed",
       }
     );
   });

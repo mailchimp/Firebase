@@ -128,7 +128,15 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
         - `mailchimpFieldName` - (required) The name of the Mailchimp Merge Field to map to, e.g. "FNAME".
         - `when` - (optional) When to send the value of the field to Mailchimp. Options are "always" (which will send the value of this field on _any_ change to the document, not just this field) or "changed". Default is "changed".
 
-    2. `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
+    2. `statusField` - An optional configuration setting for syncing the users mailchimp status. Properties are:
+
+        - `documentPath` - (required) The path to the field in the document containing the users status. This additionally accepts nested object paths. e.g. "status", "meta.status".
+        - `statusFormat` - (optional) Indicates the format that the status field is. The options are:
+
+            - `"string"` - The default, this will sync the value from the status field as is, with no modification.
+            - `"boolean"` - This will check if the value is truthy (e.g. true, 1, "subscribed"), and if so will resolve the status to "subscribed", otherwise it will resolve to "unsubscribed".
+
+    3. `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
 
     Configuration Example:
 

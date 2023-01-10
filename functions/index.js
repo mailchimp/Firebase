@@ -266,11 +266,33 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
       const params = {
         status_if_new: config.mailchimpContactStatus,
         email_address: _.get(newDoc, mergeFieldsConfig.subscriberEmail),
-        merge_fields: mergeFieldsToUpdate
       };
 
-      // Invoke mailchimp API with updated tags
-      if (!_.isEmpty(mergeFieldsToUpdate)) {
+      if(!_.isEmpty(mergeFieldsToUpdate)) {
+        params.merge_fields = mergeFieldsToUpdate
+      }
+
+      // sync status if opted in
+      if(_.isObject(mergeFieldsConfig.statusField)) {
+        const { documentPath, statusFormat } = mergeFieldsConfig.statusField
+        let prevStatusValue = _.get(prevDoc, documentPath, '');
+        // lookup the same field value in new snapshot
+        let newStatusValue = _.get(newDoc, documentPath, '');
+
+        if(statusFormat && statusFormat === "boolean"
+        ) {
+          prevStatusValue = prevStatusValue ? "subscribed" : "unsubscribed"
+          newStatusValue = newStatusValue ? "subscribed" : "unsubscribed"
+        }
+
+        if (prevStatusValue !== newStatusValue) {
+          params.status = newStatusValue
+          params.status_if_new = newStatusValue
+        }
+      }
+
+      // Invoke mailchimp API with updated data
+      if (params.merge_fields || params.status) {
         await mailchimp.put(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}`, params);
       }
     } catch (e) {
