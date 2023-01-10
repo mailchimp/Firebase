@@ -45,6 +45,65 @@ describe("mergeFieldsHandler", () => {
     expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
   });
 
+  it("should make no calls with missing mergeFields", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "new first name",
+      lastName: "new last name",
+      phoneNumber: "new phone number",
+      emailAddress: "test@example.com",
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(null);
+    expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
+  });
+
+  it("should make no calls with invalid mergeFields", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: { field1: "value"}
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "new first name",
+      lastName: "new last name",
+      phoneNumber: "new phone number",
+      emailAddress: "test@example.com",
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(null);
+    expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
+  });
+
   it("should make no calls when subscriberEmail field not found in document", async () => {
     configureApi({
       ...defaultConfig,
