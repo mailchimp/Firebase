@@ -3,15 +3,16 @@ const _ = require('lodash');
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const Mailchimp = require('mailchimp-api-v3');
+const validation = require("./validation")
 
 let config = require('./config');
 const logs = require('./logs');
 
-const CONFIG_PARAM_NAMES = Object.freeze([
-  'mailchimpMemberTags',
-  'mailchimpMergeField',
-  'mailchimpMemberEvents'
-]);
+const CONFIG_PARAMS = Object.freeze({
+  'mailchimpMemberTags': validation.validateTagConfig,
+  'mailchimpMergeField': validation.validateMergeFieldsConfig,
+  'mailchimpMemberEvents': validation.validateEventsConfig
+});
 
 admin.initializeApp();
 logs.init();
@@ -24,26 +25,32 @@ const processConfig = (configInput) => {
       functions.logger.log(message, key, value);
       return acc;
     }
-    if (configInput[key] && CONFIG_PARAM_NAMES.includes(key)) {
+    if (configInput[key] && Object.keys(CONFIG_PARAMS).includes(key)) {
       const parsedConfig = JSON.parse(configInput[key]);
       if (!configInput[`${key}WatchPath`]) {
         // Firebase functions must listen to a document path
         // As such, a specific id (users/marie) or wildcard path (users/{userId}) must be specified
         // https://firebase.google.com/docs/firestore/extend-with-functions#wildcards-parameters
-        logError(`${key}WatchPath config property is undefined. Please ensure a proper watch path param has been provided.`);
+        return logError(`${key}WatchPath config property is undefined. Please ensure a proper watch path param has been provided.`);
       }
       if (configInput[`${key}WatchPath`] === 'N/A') {
         // The Firebase platform requires a watch path to be provided conforming to a regular expression string/string
         // However, given this Mailchimp extension represents a suite of features, it's possible a user will not utilize all of them
         // As such, when a watch path of "N/A" is provided as input, it serves as an indicator to skip this feature and treat the function as NO-OP.
-        logError(`${key}WatchPath property is N/A. Setting ${configInput[key]} cloud function as NO-OP.`);
+        return logError(`${key}WatchPath property is N/A. Setting ${configInput[key]} cloud function as NO-OP.`);
       }
-      // Each feature config must include a property called "subscriberEmail"
-      // which maps to the mailchimp user email in the Firestore document
-      if (!parsedConfig.subscriberEmail) {
-        logError(`${key} requires a property named 'subscriberEmail'`);
+
+      if(_.isEmpty(parsedConfig)) {
+        return logError(`${key} configuration not provided.`);
+      } 
+
+      const validator = CONFIG_PARAMS[key];
+      const validationResult = validator(parsedConfig);
+      if(!validationResult.valid) {
+        return logError(`${key} syntax is invalid: \n${validationResult.errors.map(e => e.message).join(",\n")}`);
       }
-      // persist the serialized JSON
+
+      // persist the deserialized JSON
       acc[key] = parsedConfig;
     } else {
       // persist the string value as-is (location, oAuth Token, AudienceId, Contact Status, etc.)
