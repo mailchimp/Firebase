@@ -4,6 +4,7 @@
 - Support extended syntax for configurations of Member Tags and Member Events, to allow multidimensional arrays to be unwrapped (PR #53)
 - Added configuration validation via JSON Schema (PR #54)
 - Support extended configuration for Merge Fields, so that fields can be set to continuously sync even when not changed (PR #55)
+- Dependencies bump (#56)
 
 ## Version 0.4.0
 
