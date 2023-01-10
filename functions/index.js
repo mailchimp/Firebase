@@ -71,7 +71,25 @@ try {
 }
 
 const subscriberHasher = (email) => crypto.createHash("md5").update(email.toLowerCase()).digest("hex");
+
 const getSubscriberEmail = (prevDoc, newDoc, emailPath) => _.get(prevDoc, emailPath, false) || _.get(newDoc, emailPath)
+
+const resolveMultiValue = (doc, documentPathOrConfig, defaultValue = undefined) => {
+  if(_.isObject(documentPathOrConfig)) {
+    const { valueSelector, documentPath } = documentPathOrConfig
+    const resolvedValue = _.get(doc, documentPath, defaultValue)
+    if(valueSelector === undefined)
+      return resolvedValue;
+
+    if(_.isArray(resolvedValue)) {
+      return _.map(resolvedValue, i => _.get(i, valueSelector))
+    } else {
+      return _.get(resolvedValue, valueSelector)
+    }
+  }
+
+  return _.get(doc, documentPathOrConfig, defaultValue)
+};
 
 exports.addUserToList = functions.handler.auth.user.onCreate(
   async (user) => {
@@ -168,8 +186,8 @@ exports.memberTagsHandler = functions.handler.firestore.document
       const newDoc = event && event.after && event.after.data();
 
       // Retrieves subscriber tags before/after write event
-      const getTagsFromEventSnapshot = snapshot => tagsConfig.memberTags.reduce((acc, tag) => {
-        const tags = _.get(snapshot, tag);
+      const getTagsFromEventSnapshot = snapshot => tagsConfig.memberTags.reduce((acc, tagConfig) => {
+        const tags = resolveMultiValue(snapshot, tagConfig);
         if (Array.isArray(tags) && tags && tags.length) {
           acc = [...acc, ...tags];
         } else if (tags) {
@@ -285,8 +303,8 @@ exports.memberEventsHandler = functions.handler.firestore.document
       const newDoc = event && event.after && event.after.data();
 
       // Retrieves subscriber tags before/after write event
-      const getMemberEventsFromSnapshot = snapshot => eventsConfig.memberEvents.reduce((acc, memberEvent) => {
-        const events = _.get(snapshot, memberEvent);
+      const getMemberEventsFromSnapshot = snapshot => eventsConfig.memberEvents.reduce((acc, memberEventConfiguration) => {
+        const events = resolveMultiValue(snapshot, memberEventConfiguration);
         if (Array.isArray(events) && events && events.length) {
           acc = [...acc, ...events];
         } else if (events) {

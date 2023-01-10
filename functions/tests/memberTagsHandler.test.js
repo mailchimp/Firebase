@@ -236,6 +236,50 @@ describe("memberTagsHandler", () => {
     );
   });
 
+  it("should set tags from multidimensional nested config for new user", async () => {
+        configureApi({
+          ...defaultConfig,
+          mailchimpMemberTags: JSON.stringify({
+            memberTags: ["tag_data.field_1", { documentPath: "tag_data.field_2", valueSelector: "value"}],
+            subscriberEmail: "emailAddress",
+          }),
+        });
+        const wrapped = testEnv.wrap(api.memberTagsHandler);
+    
+        const testUser = {
+          uid: "122",
+          displayName: "lee",
+          emailAddress: "test@example.com",
+          tag_data: {
+            field_1: "tagValue1",
+            field_2: [
+              { label : "label_1", value: "value_1" },
+              { label : "label_2", value: "value_2" },
+              { label : "label_3", value: "value_3" },
+            ],
+          },
+        };
+    
+        const result = await wrapped({
+          after: {
+            data: () => testUser,
+          },
+        });
+    
+        expect(result).toBe(undefined);
+        expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith(
+          "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/tags",
+          {
+            tags: [
+              { name: "tagValue1", status: "active" },
+              { name: "value_1", status: "active" },
+              { name: "value_2", status: "active" },
+              { name: "value_3", status: "active" },
+            ],
+          }
+        );
+      });
+
   it("should update tags for changed user", async () => {
     configureApi({
       ...defaultConfig,

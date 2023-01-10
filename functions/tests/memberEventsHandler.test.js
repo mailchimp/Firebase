@@ -328,4 +328,51 @@ describe("memberEventsHandler", () => {
       "name": "my string event 4",
     });
   });
+
+  it("should use verbose config to determine events", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMemberEvents: JSON.stringify({
+        memberEvents: ["events1", { documentPath: "events2" }, { documentPath: "events3", valueSelector: "eventKey"}],
+        subscriberEmail: "emailAddress",
+      })
+    });
+    const wrapped = testEnv.wrap(api.memberEventsHandler);
+
+    const beforeUser = {
+      uid: "122",
+      displayName: "lee",
+      emailAddress: "test@example.com",
+      events1: ["my string event 1"],
+      events2: ["my string event 2"],
+      events3: [{ "eventKey": "my string event 3"},{ "eventKey": "my string event 4"}]
+    };
+
+    const afterUser = {
+      ...beforeUser,
+      events1: ["my string event 1", "my string event 5"],
+      events2: ["my string event 6"],
+      events3: [{ "eventKey": "my string event 3"},{ "eventKey": "my string event 7"}]
+    }
+
+    const result = await wrapped({
+      before: {
+        data: () => beforeUser,
+      },
+      after: {
+        data: () => afterUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
+      "name": "my string event 5",
+    });
+    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
+      "name": "my string event 6",
+    });
+    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
+      "name": "my string event 7",
+    });
+  });
 });
