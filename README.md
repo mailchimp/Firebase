@@ -124,7 +124,9 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
 - Firebase Merge Fields Config: Provide a configuration mapping in JSON format indicating which Firestore event(s) to listen for and associate as Mailchimp merge fields.
 
   - Required Fields:
-    1. `mergeFields` - JSON mapping representing the Firestore document fields to associate with Mailchimp Merge Fields.
+    1. `mergeFields` - JSON mapping representing the Firestore document fields to associate with Mailchimp Merge Fields. This can be either a field name, path, or an object with the following properties:
+        - `mailchimpFieldName` - (required) The name of the Mailchimp Merge Field to map to, e.g. "FNAME".
+        - `when` - (optional) When to send the value of the field to Mailchimp. Options are "always" (which will send the value of this field on _any_ change to the document, not just this field) or "changed". Default is "changed".
 
     2. `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
 
@@ -136,6 +138,19 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
         "firstName": "FNAME",
         "lastName": "LNAME",
         "phoneNumber": "PHONE"
+      },
+      "subscriberEmail": "emailAddress"
+    } 
+    ```
+
+    Or via equivalent extended syntax:
+
+    ```json
+    {
+      "mergeFields": {
+        "firstName": { "mailchimpFieldName": "FNAME" },
+        "lastName":{ "mailchimpFieldName": "LNAME" },
+        "phoneNumber": { "mailchimpFieldName": "PHONE", "when": "changed" }
       },
       "subscriberEmail": "emailAddress"
     } 
@@ -155,7 +170,23 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
     } 
     ```
 
-    Any data associated with the mapped fields will be considered Merge Fields and the Mailchimp user's profile will be updated accordingly.
+    Any data associated with the mapped fields (i.e. firstName, lastName, phoneNumber) will be considered Merge Fields and the Mailchimp user's profile will be updated accordingly.
+
+    If there is a requirement to always send the firstName and lastName values, the `"when": "always"` configuration option can be set on those fields, like so:
+
+    ```json
+    {
+      "mergeFields": {
+        "firstName": { "mailchimpFieldName": "FNAME", "when": "always" },
+        "lastName":{ "mailchimpFieldName": "LNAME", "when": "always" },
+        "phoneNumber": { "mailchimpFieldName": "PHONE", "when": "changed" }
+      },
+      "subscriberEmail": "emailAddress"
+    } 
+    ```
+
+    This can be handy if Firebase needs to remain the source or truth or if the extension has been installed after data is already in the collection and there is a data migration period.
+
 
     **NOTE: To disable this cloud function listener, provide an empty JSON config `{}`.**
 
