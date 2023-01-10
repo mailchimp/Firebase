@@ -70,6 +70,14 @@ const mergeFieldsConfigSchema = {
         ],
       },
     },
+    statusField: {
+      type: "object",
+      properties: {
+        documentPath: { type: "string" },
+        statusFormat: { type: "string", enum: ["boolean", "string"] },
+      },
+      required: ["documentPath"],
+    },
     subscriberEmail: { type: "string" },
   },
   required: ["mergeFields", "subscriberEmail"],
