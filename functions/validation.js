@@ -47,19 +47,38 @@ const eventsConfigSchema = {
   required: ["memberEvents", "subscriberEmail"],
 };
 
+const mergeFieldsExtendedConfigSchema = {
+  id: "/MergeFieldExtendedConfig",
+  type: "object",
+  properties: {
+    mailchimpFieldName: { type: "string" },
+    when: { type: "string", enum: ["changed", "always"] },
+  },
+  required: ["mailchimpFieldName"],
+};
+
 const mergeFieldsConfigSchema = {
   id: "/MergeFieldsConfig",
   type: "object",
   properties: {
     mergeFields: {
       type: "object",
-      additionalProperties: { type: "string" }
+      additionalProperties: {
+        oneOf: [
+          { type: "string" },
+          { $ref: mergeFieldsExtendedConfigSchema.id },
+        ],
+      },
     },
     subscriberEmail: { type: "string" },
   },
   required: ["mergeFields", "subscriberEmail"],
 };
 
+v.addSchema(
+  mergeFieldsExtendedConfigSchema,
+  mergeFieldsExtendedConfigSchema.id
+);
 v.addSchema(multidimensionalSelectorSchema, multidimensionalSelectorSchema.id);
 
 exports.validateTagConfig = (tagConfig) =>
