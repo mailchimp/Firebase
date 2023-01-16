@@ -80,7 +80,7 @@ const resolveValueFromDocumentPath = (doc, documentPathOrConfig, defaultValue = 
   return jmespath.search(doc, documentSelector) ?? defaultValue
 };
 
-exports.addUserToList = functions.auth.user().onCreate(
+exports.addUserToList = functions.handler.auth.user.onCreate(
   async (user) => {
     logs.start();
 
@@ -117,7 +117,7 @@ exports.addUserToList = functions.auth.user().onCreate(
   }
 );
 
-exports.removeUserFromList = functions.auth.user().onDelete(
+exports.removeUserFromList = functions.handler.auth.user.onDelete(
   async (user) => {
     logs.start();
 
@@ -147,7 +147,7 @@ exports.removeUserFromList = functions.auth.user().onDelete(
   }
 );
 
-exports.memberTagsHandler = functions.firestore.document(config.mailchimpMemberTagsWatchPath)
+exports.memberTagsHandler = functions.handler.firestore.document
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMemberTags)) return null;
@@ -207,7 +207,7 @@ exports.memberTagsHandler = functions.firestore.document(config.mailchimpMemberT
     }
   });
 
-exports.mergeFieldsHandler = functions.firestore.document(config.mailchimpMergeFieldWatchPath)
+exports.mergeFieldsHandler = functions.handler.firestore.document
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMergeField)) return null;
@@ -289,7 +289,7 @@ exports.mergeFieldsHandler = functions.firestore.document(config.mailchimpMergeF
     }
   });
 
-exports.memberEventsHandler = functions.firestore.document(config.mailchimpMemberEventsWatchPath)
+exports.memberEventsHandler = functions.handler.firestore.document
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMemberEvents)) return null;
