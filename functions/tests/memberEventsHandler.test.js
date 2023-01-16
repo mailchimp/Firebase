@@ -333,7 +333,7 @@ describe("memberEventsHandler", () => {
     configureApi({
       ...defaultConfig,
       mailchimpMemberEvents: JSON.stringify({
-        memberEvents: ["events1", { documentPath: "events2" }, { documentPath: "events3", valueSelector: "eventKey"}],
+        memberEvents: ["events1", { documentPath: "events2" }, { documentPath: "events3[*].eventKey"}],
         subscriberEmail: "emailAddress",
       })
     });

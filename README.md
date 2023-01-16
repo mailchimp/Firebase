@@ -48,11 +48,10 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
   - Required Fields:
   
     1. `memberTags` - The Firestore document fields(s) to retrieve data from and classify as subscriber tags in Mailchimp. Acceptable data types include:
-        - `Array<String>` - The extension will lookup the values in the provided fields and update the subscriber's member tags with the respective data values. This additionally accepts nested object paths. e.g. ["primaryTags", "additionalTags", "tags.primary"]
+        - `Array<String>` - The extension will lookup the values in the provided fields and update the subscriber's member tags with the respective data values. The format of each string can be any valid [JMES Path query](https://jmespath.org/). e.g. ["primaryTags", "additionalTags", "tags.primary"]
 
         - `Array<Object>` - An extended object configuration is supported with the following fields:
-            - `documentPath` - (required) The path to the field in the document containing tag/s. This additionally accepts nested object paths. e.g. "primaryTags", "tags.primary".
-            - `valueSelector` - (optional) An additional path for unwrapping tags from multi-dimensional arrays. e.g. "tagName".
+            - `documentPath` - (required) The path to the field in the document containing tag/s, as a string. The format can be any valid [JMES Path query](https://jmespath.org/). e.g. "primaryTags", "tags.primary".
 
     2. `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
 
@@ -112,7 +111,7 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
 
     ```json
     {
-      "memberTags": [{ "documentPath": "meta.tags", "valueSelector": "value" }],
+      "memberTags": [{ "documentPath": "meta.tags[*].value" }],
       "subscriberEmail": "emailAddress"
     } 
     ```
@@ -124,13 +123,13 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
 - Firebase Merge Fields Config: Provide a configuration mapping in JSON format indicating which Firestore event(s) to listen for and associate as Mailchimp merge fields.
 
   - Required Fields:
-    1. `mergeFields` - JSON mapping representing the Firestore document fields to associate with Mailchimp Merge Fields. This can be either a field name, path, or an object with the following properties:
+    1. `mergeFields` - JSON mapping representing the Firestore document fields to associate with Mailchimp Merge Fields. The key format can be any valid [JMES Path query](https://jmespath.org/) as a string. The value must be the name of a Mailchimp Merge Field as a string, or an object with the following properties:
         - `mailchimpFieldName` - (required) The name of the Mailchimp Merge Field to map to, e.g. "FNAME".
         - `when` - (optional) When to send the value of the field to Mailchimp. Options are "always" (which will send the value of this field on _any_ change to the document, not just this field) or "changed". Default is "changed".
 
     2. `statusField` - An optional configuration setting for syncing the users mailchimp status. Properties are:
 
-        - `documentPath` - (required) The path to the field in the document containing the users status. This additionally accepts nested object paths. e.g. "status", "meta.status".
+        - `documentPath` - (required) The path to the field in the document containing the users status, as a string. The format can be any valid [JMES Path query](https://jmespath.org/). e.g. "status", "meta.status".
         - `statusFormat` - (optional) Indicates the format that the status field is. The options are:
 
             - `"string"` - The default, this will sync the value from the status field as is, with no modification.
@@ -195,6 +194,19 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
 
     This can be handy if Firebase needs to remain the source or truth or if the extension has been installed after data is already in the collection and there is a data migration period.
 
+    If the users status is also captured in the Firestore document, the status can be updated in Mailchimp by using the following configuration:
+
+    ```json
+    {
+      "statusField": {
+        "documentPath": "meta.status",
+        "statusFormat": "string",
+      },
+      "subscriberEmail": "emailAddress"
+    } 
+    ```
+
+    This can be as well, or instead of, the `mergeFields` configuration property being set.
 
     **NOTE: To disable this cloud function listener, provide an empty JSON config `{}`.**
 
@@ -204,11 +216,10 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
 
   - Required Fields:
     1. `memberEvents` - The Firestore document fields(s) to retrieve data from and classify as member events in Mailchimp. Acceptable data types include:
-        - `Array<String>` - The extension will lookup the values (mailchimp event names) in the provided fields and post those events to Mailchimp on the subscriber's activity feed. This additionally accepts nested object paths. e.g. ["events", "meta.events"]
+        - `Array<String>` - The extension will lookup the values (mailchimp event names) in the provided fields and post those events to Mailchimp on the subscriber's activity feed. The format can be any valid [JMES Path query](https://jmespath.org/). e.g. ["events", "meta.events"]
 
         - `Array<Object>` - An extended object configuration is supported with the following fields:
-            - `documentPath` - (required) The path to the field in the document containing events. This additionally accepts nested object paths. e.g. "events", "meta.events".
-            - `valueSelector` - (optional) An additional path for unwrapping events from multi-dimensional arrays. e.g. "title".
+            - `documentPath` - (required) The path to the field in the document containing events. The format can be any valid [JMES Path query](https://jmespath.org/). e.g. "events", "meta.events".
 
     2. `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
 
@@ -270,7 +281,7 @@ Usage of this extension also requires you to have a Mailchimp account. You are r
 
     ```json
     {
-      "memberEvents": [{ "documentPath": "meta.events", "valueSelector": "title" }],
+      "memberEvents": [{ "documentPath": "meta.events[*].title" }],
       "subscriberEmail": "emailAddress"
     } 
     ```

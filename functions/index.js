@@ -3,7 +3,8 @@ const _ = require('lodash');
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const Mailchimp = require('mailchimp-api-v3');
-const validation = require("./validation")
+const validation = require("./validation");
+const jmespath = require('jmespath');
 
 let config = require('./config');
 const logs = require('./logs');
@@ -74,24 +75,12 @@ const subscriberHasher = (email) => crypto.createHash("md5").update(email.toLowe
 
 const getSubscriberEmail = (prevDoc, newDoc, emailPath) => _.get(prevDoc, emailPath, false) || _.get(newDoc, emailPath)
 
-const resolveMultiValue = (doc, documentPathOrConfig, defaultValue = undefined) => {
-  if(_.isObject(documentPathOrConfig)) {
-    const { valueSelector, documentPath } = documentPathOrConfig
-    const resolvedValue = _.get(doc, documentPath, defaultValue)
-    if(valueSelector === undefined)
-      return resolvedValue;
-
-    if(_.isArray(resolvedValue)) {
-      return _.map(resolvedValue, i => _.get(i, valueSelector))
-    } else {
-      return _.get(resolvedValue, valueSelector)
-    }
-  }
-
-  return _.get(doc, documentPathOrConfig, defaultValue)
+const resolveValueFromDocumentPath = (doc, documentPathOrConfig, defaultValue = undefined) => {
+  const documentSelector = _.isObject(documentPathOrConfig) ? documentPathOrConfig.documentPath : documentPathOrConfig
+  return jmespath.search(doc, documentSelector) ?? defaultValue
 };
 
-exports.addUserToList = functions.handler.auth.user.onCreate(
+exports.addUserToList = functions.auth.user().onCreate(
   async (user) => {
     logs.start();
 
@@ -128,7 +117,7 @@ exports.addUserToList = functions.handler.auth.user.onCreate(
   }
 );
 
-exports.removeUserFromList = functions.handler.auth.user.onDelete(
+exports.removeUserFromList = functions.auth.user().onDelete(
   async (user) => {
     logs.start();
 
@@ -158,8 +147,8 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
   }
 );
 
-exports.memberTagsHandler = functions.handler.firestore.document
-  .onWrite(async (event, context) => {
+exports.memberTagsHandler = functions.firestore.document(config.mailchimpMemberTagsWatchPath)
+  .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMemberTags)) return null;
 
@@ -187,7 +176,7 @@ exports.memberTagsHandler = functions.handler.firestore.document
 
       // Retrieves subscriber tags before/after write event
       const getTagsFromEventSnapshot = snapshot => tagsConfig.memberTags.reduce((acc, tagConfig) => {
-        const tags = resolveMultiValue(snapshot, tagConfig);
+        const tags = resolveValueFromDocumentPath(snapshot, tagConfig);
         if (Array.isArray(tags) && tags && tags.length) {
           acc = [...acc, ...tags];
         } else if (tags) {
@@ -218,8 +207,8 @@ exports.memberTagsHandler = functions.handler.firestore.document
     }
   });
 
-exports.mergeFieldsHandler = functions.handler.firestore.document
-  .onWrite(async (event, context) => {
+exports.mergeFieldsHandler = functions.firestore.document(config.mailchimpMergeFieldWatchPath)
+  .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMergeField)) return null;
 
@@ -249,9 +238,9 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
       const mergeFieldsToUpdate = Object.entries(mergeFieldsConfig.mergeFields).reduce((acc, [documentPath, mergeFieldConfig]) => {
         const mergeFieldName = _.isObject(mergeFieldConfig) ? mergeFieldConfig.mailchimpFieldName : mergeFieldConfig;
         
-        const prevMergeFieldValue = _.get(prevDoc, documentPath);
+        const prevMergeFieldValue = jmespath.search(prevDoc, documentPath);
         // lookup the same field value in new snapshot
-        const newMergeFieldValue = _.get(newDoc, documentPath, '');
+        const newMergeFieldValue = jmespath.search(newDoc, documentPath) ?? "";
 
         // if delta exists or the field should always be sent, then update accumulator collection
         if (prevMergeFieldValue !== newMergeFieldValue || (_.isObject(mergeFieldConfig) && mergeFieldConfig.when && mergeFieldConfig.when === "always")) {
@@ -275,9 +264,9 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
       // sync status if opted in
       if(_.isObject(mergeFieldsConfig.statusField)) {
         const { documentPath, statusFormat } = mergeFieldsConfig.statusField
-        let prevStatusValue = _.get(prevDoc, documentPath, '');
+        let prevStatusValue = jmespath.search(prevDoc, documentPath) ?? '';
         // lookup the same field value in new snapshot
-        let newStatusValue = _.get(newDoc, documentPath, '');
+        let newStatusValue = jmespath.search(newDoc, documentPath) ?? '';
 
         if(statusFormat && statusFormat === "boolean"
         ) {
@@ -300,8 +289,8 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
     }
   });
 
-exports.memberEventsHandler = functions.handler.firestore.document
-  .onWrite(async (event, context) => {
+exports.memberEventsHandler = functions.firestore.document(config.mailchimpMemberEventsWatchPath)
+  .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMemberEvents)) return null;
 
@@ -329,7 +318,7 @@ exports.memberEventsHandler = functions.handler.firestore.document
 
       // Retrieves subscriber tags before/after write event
       const getMemberEventsFromSnapshot = snapshot => eventsConfig.memberEvents.reduce((acc, memberEventConfiguration) => {
-        const events = resolveMultiValue(snapshot, memberEventConfiguration);
+        const events = resolveValueFromDocumentPath(snapshot, memberEventConfiguration);
         if (Array.isArray(events) && events && events.length) {
           acc = [...acc, ...events];
         } else if (events) {

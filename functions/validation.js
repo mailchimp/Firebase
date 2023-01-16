@@ -6,7 +6,6 @@ const multidimensionalSelectorSchema = {
   type: "object",
   properties: {
     documentPath: { type: "string" },
-    valueSelector: { type: "string" },
   },
   required: ["documentPath"],
 };

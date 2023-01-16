@@ -216,6 +216,169 @@ describe("mergeFieldsHandler", () => {
     );
   });
 
+  it("should set data for user when new value only", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+          phoneNumber: "PHONE",
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const beforeUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "old first name",
+      lastName: "old last name",
+      emailAddress: "test@example.com",
+    };
+    const afterUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "new first name",
+      lastName: "new last name",
+      phoneNumber: "new phone number",
+      emailAddress: "test@example.com",
+    };
+
+    const result = await wrapped({
+      before: {
+        data: () => beforeUser,
+      },
+      after: {
+        data: () => afterUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimpMock.__mocks.put).toHaveBeenCalledWith(
+      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0",
+      {
+        email_address: "test@example.com",
+        merge_fields: {
+          FNAME: "new first name",
+          LNAME: "new last name",
+          PHONE: "new phone number",
+        },
+        status_if_new: "mailchimpContactStatus",
+      }
+    );
+  });
+
+  it("should set data for user when old value only", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+          phoneNumber: "PHONE",
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const beforeUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "old first name",
+      lastName: "old last name",
+      phoneNumber: "old phone number",
+      emailAddress: "test@example.com",
+    };
+    const afterUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "new first name",
+      lastName: "new last name",
+      emailAddress: "test@example.com",
+    };
+
+    const result = await wrapped({
+      before: {
+        data: () => beforeUser,
+      },
+      after: {
+        data: () => afterUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimpMock.__mocks.put).toHaveBeenCalledWith(
+      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0",
+      {
+        email_address: "test@example.com",
+        merge_fields: {
+          FNAME: "new first name",
+          LNAME: "new last name",
+          PHONE: "",
+        },
+        status_if_new: "mailchimpContactStatus",
+      }
+    );
+  });
+
+  it("should set data for user when changed boolean only", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+          hasThing: "HAS_THING",
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const beforeUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "old first name",
+      lastName: "old last name",
+      hasThing: true,
+      emailAddress: "test@example.com",
+    };
+    const afterUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "new first name",
+      lastName: "new last name",
+      hasThing: false,
+      emailAddress: "test@example.com",
+    };
+
+    const result = await wrapped({
+      before: {
+        data: () => beforeUser,
+      },
+      after: {
+        data: () => afterUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimpMock.__mocks.put).toHaveBeenCalledWith(
+      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0",
+      {
+        email_address: "test@example.com",
+        merge_fields: {
+          FNAME: "new first name",
+          LNAME: "new last name",
+          HAS_THING: false,
+        },
+        status_if_new: "mailchimpContactStatus",
+      }
+    );
+  });
+
   it("should set data for user with nested subscriber email", async () => {
     configureApi({
       ...defaultConfig,
@@ -408,6 +571,84 @@ describe("mergeFieldsHandler", () => {
     );
   });
 
+  it("should use JMESPath query", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+          "data[?field=='phoneNumber'].value | [0]": "PHONE",
+          "history[0].key": "LATEST_CHANGE",
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const beforeUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "first name",
+      lastName: "last name",
+      data: [{
+        field: 'phoneNumber',
+        value: "old phone number",
+      }, {
+        field: "country",
+        value: "Australia"
+      }],
+      history: [{
+        key: 'firstName',
+        to: 'Some other first name',
+      }],
+      emailAddress: "test@example.com",
+    };
+    const afterUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "first name",
+      lastName: "last name",
+      data: [{
+        field: 'phoneNumber',
+        value: "new phone number",
+      }, {
+        field: "country",
+        value: "New Zealand"
+      }],
+      history: [{
+        key: 'lastName',
+        to: 'Some other name',
+      },{
+        key: 'firstName',
+        to: 'Some other last name',
+      }],
+      emailAddress: "test@example.com",
+    };
+
+    const result = await wrapped({
+      before: {
+        data: () => beforeUser,
+      },
+      after: {
+        data: () => afterUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimpMock.__mocks.put).toHaveBeenCalledWith(
+      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0",
+      {
+        email_address: "test@example.com",
+        merge_fields: {
+          PHONE: "new phone number",
+          LATEST_CHANGE: "lastName"
+        },
+        status_if_new: "mailchimpContactStatus",
+      }
+    );
+  });
+
   it("should always push data for fields with when=always configuration for user", async () => {
     configureApi({
       ...defaultConfig,
@@ -575,7 +816,6 @@ describe("mergeFieldsHandler", () => {
     );
   });
 
-
   it("should update the status of the user, with boolean transformation to subscribed", async () => {
     configureApi({
       ...defaultConfig,
@@ -627,7 +867,6 @@ describe("mergeFieldsHandler", () => {
       }
     );
   });
-
 
   it("should update the status of the user, with boolean transformation to unsubscribed", async () => {
     configureApi({

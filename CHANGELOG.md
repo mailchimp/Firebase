@@ -6,6 +6,7 @@
 - Support extended configuration for Merge Fields, so that fields can be set to continuously sync even when not changed (PR #55)
 - Dependencies bump (PR #56)
 - Support updating mailchimp subscription status via merge field trigger (PR #57)
+- Integrate JMESPath library to allow standardized configuration to fetch from complex object structures. Replaces some work done in PR #53 (PR #58)
 
 ## Version 0.4.0
 
