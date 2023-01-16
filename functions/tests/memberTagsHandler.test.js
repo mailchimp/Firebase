@@ -240,7 +240,7 @@ describe("memberTagsHandler", () => {
         configureApi({
           ...defaultConfig,
           mailchimpMemberTags: JSON.stringify({
-            memberTags: ["tag_data.field_1", { documentPath: "tag_data.field_2", valueSelector: "value"}],
+            memberTags: ["tag_data.field_1", { documentPath: "tag_data.field_2[*].value"}],
             subscriberEmail: "emailAddress",
           }),
         });
