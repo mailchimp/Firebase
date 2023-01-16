@@ -1,3 +1,11 @@
+## Version 0.5.2
+
+- Reverted firebase-functions package update to use original handler methods.
+
+## Version 0.5.1
+
+- Resolved bug where duplicate functions were trying to be created on install after firebase-functions package was updated.
+
 ## Version 0.5.0
 
 - Support updating Mailchimp when a user changes their email in Firebase (PR #46)
