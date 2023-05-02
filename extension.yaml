@@ -120,9 +120,9 @@ resources:
   - name: addExistingUsersToList
     type: firebaseextensions.v1beta.function
     description:
-      Adds existing users into the specified Mailchimp audience.
+      Adds existing Firebase Authentication users into the specified Mailchimp audience.
     properties:
-      location: ${param:LOCATION}
+      location: ${LOCATION}
       runtime: nodejs16
       taskQueueTrigger: {}
 
@@ -514,10 +514,10 @@ params:
     required: true
     default: '{}'
 
-  - param: DO_BACKFILL
-    label: Import existing users into Mailchimp audience
+  - param: PERFORM_BACKFILL_FROM_AUTH
+    label: Import existing Firebase Authentication users into Mailchimp audience
     description: >-
-      Do you want to add existing users to the Mailchimp audience when you install or update this extension?
+      Do you want to backfill existing Firebase Authentication users to the Mailchimp audience when you install, update or configure this extension? Only emails not already existing in Mailchimp will be pushed.
     type: select
     required: true
     options:
@@ -529,10 +529,10 @@ params:
 lifecycleEvents:
   onInstall:
     function: addExistingUsersToList
-    processingMessage: "Adding existing users to audience ${param:MAILCHIMP_AUDIENCE_ID}"
+    processingMessage: "Adding existing Firebase Authentication users to audience ${param:MAILCHIMP_AUDIENCE_ID}"
   onUpdate:
     function: addExistingUsersToList
-    processingMessage: "Adding existing users to audience ${param:MAILCHIMP_AUDIENCE_ID}"
+    processingMessage: "Adding existing Firebase Authentication users to audience ${param:MAILCHIMP_AUDIENCE_ID}"
   onConfigure:
     function: addExistingUsersToList
-    processingMessage: "Adding existing users to audience ${param:MAILCHIMP_AUDIENCE_ID}"
+    processingMessage: "Adding existing Firebase Authentication users to audience ${param:MAILCHIMP_AUDIENCE_ID}"

@@ -75,6 +75,9 @@ try {
   logs.initError(err);
 }
 
+/**
+ * @param {string} email
+ */
 const subscriberHasher = (email) => crypto.createHash("md5").update(email.toLowerCase()).digest("hex");
 
 const getSubscriberEmail = (prevDoc, newDoc, emailPath) => _.get(prevDoc, emailPath, false) || _.get(newDoc, emailPath)
@@ -83,6 +86,33 @@ const resolveValueFromDocumentPath = (doc, documentPathOrConfig, defaultValue = 
   const documentSelector = _.isObject(documentPathOrConfig) ? documentPathOrConfig.documentPath : documentPathOrConfig
   return jmespath.search(doc, documentSelector) ?? defaultValue
 };
+
+/**
+ * @param {UserRecord} user
+ */
+const addUser = async(user) => {
+  const { email, uid } = user;
+  if (!email) {
+    logs.userNoEmail();
+    return false;
+  }
+
+  logs.userAdding(uid, config.mailchimpAudienceId);
+  const results = await mailchimp.post(
+    `/lists/${config.mailchimpAudienceId}/members`,
+    {
+      email_address: email,
+      status: config.mailchimpContactStatus,
+    }
+  );
+  logs.userAdded(
+    uid,
+    config.mailchimpAudienceId,
+    results.id,
+    config.mailchimpContactStatus
+  );
+  return true;
+}
 
 exports.addUserToList = functions.handler.auth.user.onCreate(
   async (user) => {
@@ -93,28 +123,10 @@ exports.addUserToList = functions.handler.auth.user.onCreate(
       return;
     }
 
-    const { email, uid } = user;
-    if (!email) {
-      logs.userNoEmail();
-      return;
-    }
-
     try {
-      logs.userAdding(uid, config.mailchimpAudienceId);
-      const results = await mailchimp.post(
-        `/lists/${config.mailchimpAudienceId}/members`,
-        {
-          email_address: email,
-          status: config.mailchimpContactStatus,
-        }
-      );
-      logs.userAdded(
-        uid,
-        config.mailchimpAudienceId,
-        results.id,
-        config.mailchimpContactStatus
-      );
-      logs.complete();
+      const userAdded = await addUser(user)
+      if(userAdded) 
+        logs.complete();
     } catch (err) {
       err.title === 'Member Exists' ? logs.userAlreadyInAudience( ) : logs.errorAddUser(err);
     }
@@ -358,7 +370,7 @@ exports.addExistingUsersToList = functions.tasks
   .taskQueue()
   .onDispatch(async (data) => {
     const runtime = getExtensions().runtime();
-    if (!config.doBackfill) {
+    if (!config.performBackfillFromAuth) {
       await runtime.setProcessingState(
         "PROCESSING_COMPLETE",
         "No processing requested."
@@ -371,27 +383,8 @@ exports.addExistingUsersToList = functions.tasks
 
     const res = await getAuth().listUsers(100, nextPageToken);
     const mailchimpPromises = res.users.map(async (user) => {
-      const { email, uid } = user;
-      if (!email) {
-        logs.userNoEmail();
-        return;
-      }
-
       try {
-        logs.userAdding(uid, config.mailchimpAudienceId);
-        const results = await mailchimp.post(
-          `/lists/${config.mailchimpAudienceId}/members`,
-          {
-            email_address: email,
-            status: config.mailchimpContactStatus,
-          }
-        );
-        logs.userAdded(
-          uid,
-          config.mailchimpAudienceId,
-          results.id,
-          config.mailchimpContactStatus
-        );
+        await addUser(user)
       } catch (err) {
         if (err.title === 'Member Exists' ) {
           logs.userAlreadyInAudience(uid, config.mailchimpAudienceId);
@@ -403,6 +396,7 @@ exports.addExistingUsersToList = functions.tasks
         }
       }
     });
+
     const results = await Promise.allSettled(mailchimpPromises);
     const newSucessCount =
       pastSuccessCount + results.filter((p) => p.status === "fulfilled").length;
