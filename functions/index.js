@@ -66,11 +66,12 @@ try {
   // Configure mailchimp api client
   // The datacenter id is appended to the API key in the form key-dc; 
   //if your API key is 0123456789abcdef0123456789abcde-us6, then the data center subdomain is us6
-  const apiKeyParts = config.mailchimpOAuthToken.split('-');
+  const apiKey = config.mailchimpOAuthToken;
+  const apiKeyParts = apiKey.split('-');
 
-  const server = apiKeyParts.pop;
+  const server = apiKeyParts.pop();
   mailchimp.setConfig({
-    apiKey: config.mailchimpOAuthToken, // mailchimpOAuthToken appears to be misnamed - should be mailchimpApiKey
+    apiKey: apiKey, // mailchimpOAuthToken appears to be misnamed - should be mailchimpApiKey
     server: server,
   });
 
