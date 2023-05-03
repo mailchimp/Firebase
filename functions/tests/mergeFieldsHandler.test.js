@@ -4,8 +4,7 @@ const testEnv = functions();
 jest.mock("mailchimp-api-v3");
 
 // configure config mocks (so we can inject config and try different scenarios)
-jest.mock("../config", () => defaultConfig);
-
+jest.doMock("../config", () => defaultConfig);
 const api = require("../index");
 
 describe("mergeFieldsHandler", () => {
