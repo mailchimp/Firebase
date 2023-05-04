@@ -165,7 +165,7 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
   }
 );
 
-exports.memberTagsHandler = functions.handler.firestore.document
+exports.memberTagsFirestoreHandler = functions.handler.firestore.document
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMemberTags)) return null;
@@ -229,7 +229,7 @@ exports.memberTagsHandler = functions.handler.firestore.document
     }
   });
 
-exports.mergeFieldsHandler = functions.handler.firestore.document
+exports.mergeFieldsFirestoreHandler = functions.handler.firestore.document
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMergeField)) return null;
@@ -315,7 +315,7 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
     }
   });
 
-exports.memberEventsHandler = functions.handler.firestore.document
+exports.memberEventsFirestoreHandler = functions.handler.firestore.document
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMemberEvents)) return null;

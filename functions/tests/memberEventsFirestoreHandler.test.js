@@ -10,7 +10,7 @@ jest.doMock("../config", () => defaultConfig);
 
 const api = require("../index");
 
-describe("memberEventsHandler", () => {
+describe("memberEventsFirestoreHandler", () => {
   let configureApi = (config) => {
     api.processConfig(config);
   };
@@ -27,7 +27,7 @@ describe("memberEventsHandler", () => {
 
   it("should make no calls with empty config", async () => {
     configureApi(defaultConfig);
-    const wrapped = testEnv.wrap(api.memberEventsHandler);
+    const wrapped = testEnv.wrap(api.memberEventsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -51,7 +51,7 @@ describe("memberEventsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberEventsHandler);
+    const wrapped = testEnv.wrap(api.memberEventsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -76,7 +76,7 @@ describe("memberEventsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberEventsHandler);
+    const wrapped = testEnv.wrap(api.memberEventsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -102,7 +102,7 @@ describe("memberEventsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberEventsHandler);
+    const wrapped = testEnv.wrap(api.memberEventsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -143,7 +143,7 @@ describe("memberEventsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberEventsHandler);
+    const wrapped = testEnv.wrap(api.memberEventsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -184,7 +184,7 @@ describe("memberEventsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberEventsHandler);
+    const wrapped = testEnv.wrap(api.memberEventsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -233,7 +233,7 @@ describe("memberEventsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberEventsHandler);
+    const wrapped = testEnv.wrap(api.memberEventsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -282,7 +282,7 @@ describe("memberEventsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberEventsHandler);
+    const wrapped = testEnv.wrap(api.memberEventsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -325,7 +325,7 @@ describe("memberEventsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberEventsHandler);
+    const wrapped = testEnv.wrap(api.memberEventsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -380,7 +380,7 @@ describe("memberEventsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberEventsHandler);
+    const wrapped = testEnv.wrap(api.memberEventsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",

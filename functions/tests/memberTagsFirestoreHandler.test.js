@@ -10,7 +10,7 @@ jest.doMock("../config", () => defaultConfig);
 
 const api = require("../index");
 
-describe("memberTagsHandler", () => {
+describe("memberTagsFirestoreHandler", () => {
   let configureApi = (config) => {
     api.processConfig(config);
   };
@@ -25,7 +25,7 @@ describe("memberTagsHandler", () => {
 
   it("should make no calls with empty config", async () => {
     configureApi(defaultConfig);
-    const wrapped = testEnv.wrap(api.memberTagsHandler);
+    const wrapped = testEnv.wrap(api.memberTagsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -49,7 +49,7 @@ describe("memberTagsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberTagsHandler);
+    const wrapped = testEnv.wrap(api.memberTagsFirestoreHandler);
 
     const testUser = {
       displayName: "lee",
@@ -76,7 +76,7 @@ describe("memberTagsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberTagsHandler);
+    const wrapped = testEnv.wrap(api.memberTagsFirestoreHandler);
 
     const testUser = {
       displayName: "lee",
@@ -103,7 +103,7 @@ describe("memberTagsHandler", () => {
         subscriberEmail: "email",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberTagsHandler);
+    const wrapped = testEnv.wrap(api.memberTagsFirestoreHandler);
 
     const testUser = {
       displayName: "lee",
@@ -129,7 +129,7 @@ describe("memberTagsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberTagsHandler);
+    const wrapped = testEnv.wrap(api.memberTagsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -167,7 +167,7 @@ describe("memberTagsHandler", () => {
         subscriberEmail: "contactInfo.emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberTagsHandler);
+    const wrapped = testEnv.wrap(api.memberTagsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -207,7 +207,7 @@ describe("memberTagsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberTagsHandler);
+    const wrapped = testEnv.wrap(api.memberTagsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -250,7 +250,7 @@ describe("memberTagsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberTagsHandler);
+    const wrapped = testEnv.wrap(api.memberTagsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -296,7 +296,7 @@ describe("memberTagsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberTagsHandler);
+    const wrapped = testEnv.wrap(api.memberTagsFirestoreHandler);
 
     const existingUser = {
       uid: "122",
@@ -347,7 +347,7 @@ describe("memberTagsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.memberTagsHandler);
+    const wrapped = testEnv.wrap(api.memberTagsFirestoreHandler);
 
     const existingUser = {
       uid: "122",
@@ -395,7 +395,7 @@ describe("memberTagsHandler", () => {
       ...defaultConfig,
       mailchimpMemberTags: `{ "memberTags": ["tag_field_1", "tag_field_2", "tag_field_3"], "subscriberEmail": "email"}`,
     });
-    const wrapped = testEnv.wrap(api.memberTagsHandler);
+    const wrapped = testEnv.wrap(api.memberTagsFirestoreHandler);
 
     const existingUser = {
       uid: "122",

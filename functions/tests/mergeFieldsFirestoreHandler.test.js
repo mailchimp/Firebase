@@ -9,7 +9,7 @@ const testEnv = functions();
 jest.doMock("../config", () => defaultConfig);
 const api = require("../index");
 
-describe("mergeFieldsHandler", () => {
+describe("mergeFieldsFirestoreHandler", () => {
   let configureApi = (config) => {
     api.processConfig(config);
   };
@@ -24,7 +24,7 @@ describe("mergeFieldsHandler", () => {
 
   it("should make no calls with empty config", async () => {
     configureApi(defaultConfig);
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -48,7 +48,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -79,7 +79,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -115,7 +115,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -148,7 +148,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -180,7 +180,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -226,7 +226,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -282,7 +282,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -338,7 +338,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -395,7 +395,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "contactInfo.emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -443,7 +443,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -493,7 +493,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const testUser = {
       uid: "122",
@@ -539,7 +539,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -596,7 +596,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -692,7 +692,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -749,7 +749,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -808,7 +808,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -862,7 +862,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
@@ -916,7 +916,7 @@ describe("mergeFieldsHandler", () => {
         subscriberEmail: "emailAddress",
       }),
     });
-    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    const wrapped = testEnv.wrap(api.mergeFieldsFirestoreHandler);
 
     const beforeUser = {
       uid: "122",
