@@ -8,7 +8,8 @@ jest.mock("@mailchimp/mailchimp_marketing", () => {
   const lists = jest.fn();
 
   lists.deleteListMember = jest.fn();
-  return { lists };
+  const setConfig = jest.fn();
+  return { lists, setConfig };
 } );
 
 // configure config mocks (so we can inject config and try different scenarios)

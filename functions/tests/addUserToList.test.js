@@ -9,7 +9,8 @@ jest.mock("@mailchimp/mailchimp_marketing", () => {
   const lists = jest.fn();
 
   lists.addListMember = jest.fn();
-  return { lists };
+  const setConfig = jest.fn();
+  return { lists, setConfig };
 } );
 
 
