@@ -1,7 +1,15 @@
 const functions = require("firebase-functions-test");
 const defaultConfig = require("./utils").defaultConfig;
 const testEnv = functions();
-jest.mock('mailchimp-api-v3');
+
+const mailchimp = require( '@mailchimp/mailchimp_marketing');
+
+jest.mock("@mailchimp/mailchimp_marketing", () => {
+  const lists = jest.fn();
+
+  lists.deleteListMember = jest.fn();
+  return { lists };
+} );
 
 // configure config mocks (so we can inject config and try different scenarios)
 jest.doMock("../config", () => defaultConfig);
@@ -9,17 +17,15 @@ jest.doMock("../config", () => defaultConfig);
 const api = require("../index");
 
 describe("removeUserFromList", () => {
-  let mailchimpMock
   let configureApi = (config) => {
     api.processConfig(config);
   };
 
   beforeAll(() =>{
-    mailchimpMock = require('mailchimp-api-v3')
-  })
+  });
 
   beforeEach(() => {
-    mailchimpMock.__clearMocks()
+    jest.clearAllMocks();
   });
 
   afterAll(() => {
@@ -34,7 +40,7 @@ describe("removeUserFromList", () => {
     const result = await wrapped({});
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
+    expect(mailchimp.lists.deleteListMember).toHaveBeenCalledTimes(0);
   });
 
   it("should delete user when email is given", async () => {
@@ -49,8 +55,10 @@ describe("removeUserFromList", () => {
     const result = await wrapped(testUser);
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.delete).toHaveBeenCalledWith(
-      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0"
+    expect(mailchimp.lists.deleteListMember).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.deleteListMember).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0"
     );
   });
 });

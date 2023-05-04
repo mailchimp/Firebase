@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const _ = require('lodash');
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const Mailchimp = require('@mailchimp/mailchimp_marketing');
+const mailchimp = require('@mailchimp/mailchimp_marketing');
 const validation = require("./validation");
 const jmespath = require('jmespath');
 
@@ -61,7 +61,7 @@ const processConfig = (configInput) => {
   }, {});
 }
 
-let mailchimp = Mailchimp;
+
 try {
   // Configure mailchimp api client
   // The datacenter id is appended to the API key in the form key-dc; 
@@ -211,7 +211,7 @@ exports.memberTagsHandler = functions.handler.firestore.document
       if (tags && tags.length) {
         await mailchimp.lists.updateListMemberTags(
           config.mailchimpAudienceId,
-          hashed,
+          subscriberHash,
           { tags: tags }
         );
       }

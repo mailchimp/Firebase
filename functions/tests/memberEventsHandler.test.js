@@ -1,7 +1,15 @@
 const functions = require("firebase-functions-test");
 const defaultConfig = require("./utils").defaultConfig;
 const testEnv = functions();
-jest.mock('mailchimp-api-v3');
+
+const mailchimp = require( '@mailchimp/mailchimp_marketing');
+
+jest.mock("@mailchimp/mailchimp_marketing", () => {
+  const lists = jest.fn();
+
+  lists.createListMemberEvent = jest.fn();
+  return { lists };
+} );
 
 // configure config mocks (so we can inject config and try different scenarios)
 jest.doMock("../config", () => defaultConfig);
@@ -9,17 +17,16 @@ jest.doMock("../config", () => defaultConfig);
 const api = require("../index");
 
 describe("memberEventsHandler", () => {
-  let mailchimpMock
+
   let configureApi = (config) => {
     api.processConfig(config);
   };
 
   beforeAll(() =>{
-    mailchimpMock = require('mailchimp-api-v3')
-  })
+  });
 
   beforeEach(() => {
-    mailchimpMock.__clearMocks()
+    jest.clearAllMocks();
   });
 
   afterAll(() => {
@@ -42,7 +49,7 @@ describe("memberEventsHandler", () => {
     });
 
     expect(result).toBe(null);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(0);
   });
 
   it("should make no calls with config missing memberEvents", async () => {
@@ -66,7 +73,7 @@ describe("memberEventsHandler", () => {
     });
 
     expect(result).toBe(null);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(0);
   });
 
   it("should make no calls with config specifying invalid memberEvents", async () => {
@@ -92,7 +99,7 @@ describe("memberEventsHandler", () => {
     });
 
     expect(result).toBe(null);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(0);
   });
   
 
@@ -127,9 +134,14 @@ describe("memberEventsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
-      "name": "my string event",
-    });
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        name: "my string event",
+      }
+    );
   });
 
   it("should add array events when none were existing", async () => {
@@ -163,9 +175,14 @@ describe("memberEventsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
-      "name": "my string event",
-    });
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        name: "my string event",
+      }
+    );
   });
   
 
@@ -201,12 +218,21 @@ describe("memberEventsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
-      "name": "my string event 1",
-    });
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
-      "name": "my string event 2",
-    });
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(2);
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        name: "my string event 1",
+      }
+    );
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        name: "my string event 2",
+      }
+    );
   });
 
   it("should add array of events from multiple fields when none were existing", async () => {
@@ -241,12 +267,22 @@ describe("memberEventsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
-      "name": "my string event 1",
-    });
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
-      "name": "my string event 2",
-    });
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(2);
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        name: "my string event 1",
+      }
+    );
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        name: "my string event 2",
+      }
+    );
+
   });
 
   it("should ignore previously sent string field events", async () => {
@@ -282,9 +318,15 @@ describe("memberEventsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
-      "name": "my string event 3",
-    });
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        name: "my string event 3",
+      }
+    );
+
   });
 
   it("should ignore previously sent string field events", async () => {
@@ -321,12 +363,21 @@ describe("memberEventsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
-      "name": "my string event 3",
-    });
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
-      "name": "my string event 4",
-    });
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(2);
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        name: "my string event 3",
+      }
+    );
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        name: "my string event 4",
+      }
+    );
   });
 
   it("should use verbose config to determine events", async () => {
@@ -365,14 +416,27 @@ describe("memberEventsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
-      "name": "my string event 5",
-    });
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
-      "name": "my string event 6",
-    });
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith("/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/events", {
-      "name": "my string event 7",
-    });
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(3);
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        name: "my string event 5",
+      }
+    );
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        name: "my string event 6",
+      }
+    );
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        name: "my string event 7",
+      }
+    );
   });
 });
