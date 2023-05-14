@@ -1,16 +1,9 @@
+jest.mock("@mailchimp/mailchimp_marketing");
+
 const functions = require("firebase-functions-test");
+const mailchimp = require("@mailchimp/mailchimp_marketing");
 const defaultConfig = require("./utils").defaultConfig;
 const testEnv = functions();
-
-const mailchimp = require( '@mailchimp/mailchimp_marketing');
-
-jest.mock("@mailchimp/mailchimp_marketing", () => {
-  const lists = jest.fn();
-
-  lists.deleteListMember = jest.fn();
-  const setConfig = jest.fn();
-  return { lists, setConfig };
-} );
 
 // configure config mocks (so we can inject config and try different scenarios)
 jest.doMock("../config", () => defaultConfig);
@@ -22,9 +15,6 @@ describe("removeUserFromList", () => {
     api.processConfig(config);
   };
 
-  beforeAll(() =>{
-  });
-
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -32,7 +22,6 @@ describe("removeUserFromList", () => {
   afterAll(() => {
     testEnv.cleanup();
   });
-
 
   it("should make no calls when email is not set", async () => {
     configureApi(defaultConfig);

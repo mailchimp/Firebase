@@ -1,16 +1,9 @@
+jest.mock("@mailchimp/mailchimp_marketing");
+
 const functions = require("firebase-functions-test");
+const mailchimp = require("@mailchimp/mailchimp_marketing");
 const defaultConfig = require("./utils").defaultConfig;
 const testEnv = functions();
-
-const mailchimp = require( '@mailchimp/mailchimp_marketing');
-
-jest.mock("@mailchimp/mailchimp_marketing", () => {
-  const lists = jest.fn();
-
-  lists.setListMember = jest.fn();
-  const setConfig = jest.fn();
-  return { lists, setConfig };
-} );
 
 // configure config mocks (so we can inject config and try different scenarios)
 jest.doMock("../config", () => defaultConfig);
@@ -20,9 +13,6 @@ describe("mergeFieldsHandler", () => {
   let configureApi = (config) => {
     api.processConfig(config);
   };
-
-  beforeAll(() =>{
-  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -84,7 +74,7 @@ describe("mergeFieldsHandler", () => {
       ...defaultConfig,
       mailchimpMergeField: JSON.stringify({
         mergeFields: {
-          firstName: { field1: "value"}
+          firstName: { field1: "value" },
         },
         subscriberEmail: "emailAddress",
       }),
@@ -120,7 +110,7 @@ describe("mergeFieldsHandler", () => {
           phoneNumber: "PHONE",
         },
         statusField: {
-          field1: "value"
+          field1: "value",
         },
         subscriberEmail: "emailAddress",
       }),
@@ -495,7 +485,7 @@ describe("mergeFieldsHandler", () => {
       mailchimpMergeField: JSON.stringify({
         mergeFields: {
           firstName: {
-            "mailchimpFieldName": "FNAME",
+            mailchimpFieldName: "FNAME",
           },
           lastName: "LNAME",
           phoneNumber: "PHONE",
@@ -613,17 +603,22 @@ describe("mergeFieldsHandler", () => {
       displayName: "lee",
       firstName: "first name",
       lastName: "last name",
-      data: [{
-        field: 'phoneNumber',
-        value: "old phone number",
-      }, {
-        field: "country",
-        value: "Australia"
-      }],
-      history: [{
-        key: 'firstName',
-        to: 'Some other first name',
-      }],
+      data: [
+        {
+          field: "phoneNumber",
+          value: "old phone number",
+        },
+        {
+          field: "country",
+          value: "Australia",
+        },
+      ],
+      history: [
+        {
+          key: "firstName",
+          to: "Some other first name",
+        },
+      ],
       emailAddress: "test@example.com",
     };
     const afterUser = {
@@ -631,20 +626,26 @@ describe("mergeFieldsHandler", () => {
       displayName: "lee",
       firstName: "first name",
       lastName: "last name",
-      data: [{
-        field: 'phoneNumber',
-        value: "new phone number",
-      }, {
-        field: "country",
-        value: "New Zealand"
-      }],
-      history: [{
-        key: 'lastName',
-        to: 'Some other name',
-      },{
-        key: 'firstName',
-        to: 'Some other last name',
-      }],
+      data: [
+        {
+          field: "phoneNumber",
+          value: "new phone number",
+        },
+        {
+          field: "country",
+          value: "New Zealand",
+        },
+      ],
+      history: [
+        {
+          key: "lastName",
+          to: "Some other name",
+        },
+        {
+          key: "firstName",
+          to: "Some other last name",
+        },
+      ],
       emailAddress: "test@example.com",
     };
 
@@ -666,7 +667,7 @@ describe("mergeFieldsHandler", () => {
         email_address: "test@example.com",
         merge_fields: {
           PHONE: "new phone number",
-          LATEST_CHANGE: "lastName"
+          LATEST_CHANGE: "lastName",
         },
         status_if_new: "mailchimpContactStatus",
       }
@@ -679,13 +680,13 @@ describe("mergeFieldsHandler", () => {
       mailchimpMergeField: JSON.stringify({
         mergeFields: {
           firstName: {
-            "mailchimpFieldName": "FNAME",
-            "when": "always"
+            mailchimpFieldName: "FNAME",
+            when: "always",
           },
           lastName: "LNAME",
           phoneNumber: {
-            "mailchimpFieldName": "PHONE",
-            "when": "changed"
+            mailchimpFieldName: "PHONE",
+            when: "changed",
           },
         },
         subscriberEmail: "emailAddress",
@@ -802,7 +803,7 @@ describe("mergeFieldsHandler", () => {
           lastName: "LNAME",
         },
         statusField: {
-          documentPath: "statusField"
+          documentPath: "statusField",
         },
         subscriberEmail: "emailAddress",
       }),
@@ -856,7 +857,7 @@ describe("mergeFieldsHandler", () => {
         },
         statusField: {
           documentPath: "subscribed",
-          statusFormat: "boolean"
+          statusFormat: "boolean",
         },
         subscriberEmail: "emailAddress",
       }),
@@ -910,7 +911,7 @@ describe("mergeFieldsHandler", () => {
         },
         statusField: {
           documentPath: "subscribed",
-          statusFormat: "boolean"
+          statusFormat: "boolean",
         },
         subscriberEmail: "emailAddress",
       }),
