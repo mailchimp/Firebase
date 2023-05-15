@@ -1,18 +1,9 @@
+jest.mock("@mailchimp/mailchimp_marketing");
 
 const functions = require("firebase-functions-test");
+const mailchimp = require("@mailchimp/mailchimp_marketing");
 const defaultConfig = require("./utils").defaultConfig;
 const testEnv = functions();
-
-const mailchimp = require( '@mailchimp/mailchimp_marketing');
-
-jest.mock("@mailchimp/mailchimp_marketing", () => {
-  const lists = jest.fn();
-
-  lists.addListMember = jest.fn();
-  const setConfig = jest.fn();
-  return { lists, setConfig };
-} );
-
 
 // configure config mocks (so we can inject config and try different scenarios)
 jest.doMock("../config", () => defaultConfig);
@@ -20,17 +11,12 @@ jest.doMock("../config", () => defaultConfig);
 const api = require("../index");
 
 describe("addUserToList", () => {
-
   let configureApi = (config) => {
     api.processConfig(config);
   };
 
-  beforeAll(() => {
-
-  });
-
   beforeEach(() => {
-    mailchimp.lists.mockClear();
+    jest.clearAllMocks();
   });
 
   afterAll(() => {
@@ -45,7 +31,6 @@ describe("addUserToList", () => {
 
     expect(result).toBe(undefined);
     expect(mailchimp.lists.addListMember).toHaveBeenCalledTimes(0);
-
   });
 
   it("should post user when email is given", async () => {
@@ -58,8 +43,8 @@ describe("addUserToList", () => {
     };
 
     mailchimp.lists.addListMember.mockReturnValue({
-        id: 'createdUserId'
-    })
+      id: "createdUserId",
+    });
 
     const result = await wrapped(testUser);
 
@@ -72,6 +57,5 @@ describe("addUserToList", () => {
         status: "mailchimpContactStatus",
       }
     );
-
   });
 });

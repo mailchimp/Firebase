@@ -1,16 +1,9 @@
+jest.mock("@mailchimp/mailchimp_marketing");
+
 const functions = require("firebase-functions-test");
+const mailchimp = require("@mailchimp/mailchimp_marketing");
 const defaultConfig = require("./utils").defaultConfig;
 const testEnv = functions();
-
-const mailchimp = require( '@mailchimp/mailchimp_marketing');
-
-jest.mock("@mailchimp/mailchimp_marketing", () => {
-  const lists = jest.fn();
-
-  lists.createListMemberEvent = jest.fn();
-  const setConfig = jest.fn();
-  return { lists, setConfig };
-} );
 
 // configure config mocks (so we can inject config and try different scenarios)
 jest.doMock("../config", () => defaultConfig);
@@ -18,13 +11,11 @@ jest.doMock("../config", () => defaultConfig);
 const api = require("../index");
 
 describe("memberEventsHandler", () => {
-
   let configureApi = (config) => {
     api.processConfig(config);
   };
 
-  beforeAll(() =>{
-  });
+  beforeAll(() => {});
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -58,7 +49,7 @@ describe("memberEventsHandler", () => {
       ...defaultConfig,
       mailchimpMemberEvents: JSON.stringify({
         subscriberEmail: "emailAddress",
-      })
+      }),
     });
     const wrapped = testEnv.wrap(api.memberEventsHandler);
 
@@ -81,9 +72,9 @@ describe("memberEventsHandler", () => {
     configureApi({
       ...defaultConfig,
       mailchimpMemberEvents: JSON.stringify({
-        memberEvents: [{ field1: "test"}],
+        memberEvents: [{ field1: "test" }],
         subscriberEmail: "emailAddress",
-      })
+      }),
     });
     const wrapped = testEnv.wrap(api.memberEventsHandler);
 
@@ -102,7 +93,6 @@ describe("memberEventsHandler", () => {
     expect(result).toBe(null);
     expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(0);
   });
-  
 
   it("should add string events when none were existing", async () => {
     configureApi({
@@ -110,7 +100,7 @@ describe("memberEventsHandler", () => {
       mailchimpMemberEvents: JSON.stringify({
         memberEvents: ["events"],
         subscriberEmail: "emailAddress",
-      })
+      }),
     });
     const wrapped = testEnv.wrap(api.memberEventsHandler);
 
@@ -122,8 +112,8 @@ describe("memberEventsHandler", () => {
 
     const afterUser = {
       ...beforeUser,
-      events: "my string event"
-    }
+      events: "my string event",
+    };
 
     const result = await wrapped({
       before: {
@@ -151,7 +141,7 @@ describe("memberEventsHandler", () => {
       mailchimpMemberEvents: JSON.stringify({
         memberEvents: ["events"],
         subscriberEmail: "emailAddress",
-      })
+      }),
     });
     const wrapped = testEnv.wrap(api.memberEventsHandler);
 
@@ -163,8 +153,8 @@ describe("memberEventsHandler", () => {
 
     const afterUser = {
       ...beforeUser,
-      events: ["my string event"]
-    }
+      events: ["my string event"],
+    };
 
     const result = await wrapped({
       before: {
@@ -185,7 +175,6 @@ describe("memberEventsHandler", () => {
       }
     );
   });
-  
 
   it("should add string events from multiple fields when none were existing", async () => {
     configureApi({
@@ -193,7 +182,7 @@ describe("memberEventsHandler", () => {
       mailchimpMemberEvents: JSON.stringify({
         memberEvents: ["events1", "events2"],
         subscriberEmail: "emailAddress",
-      })
+      }),
     });
     const wrapped = testEnv.wrap(api.memberEventsHandler);
 
@@ -206,8 +195,8 @@ describe("memberEventsHandler", () => {
     const afterUser = {
       ...beforeUser,
       events1: "my string event 1",
-      events2: "my string event 2"
-    }
+      events2: "my string event 2",
+    };
 
     const result = await wrapped({
       before: {
@@ -242,7 +231,7 @@ describe("memberEventsHandler", () => {
       mailchimpMemberEvents: JSON.stringify({
         memberEvents: ["events1", "events2"],
         subscriberEmail: "emailAddress",
-      })
+      }),
     });
     const wrapped = testEnv.wrap(api.memberEventsHandler);
 
@@ -255,8 +244,8 @@ describe("memberEventsHandler", () => {
     const afterUser = {
       ...beforeUser,
       events1: ["my string event 1"],
-      events2: ["my string event 2"]
-    }
+      events2: ["my string event 2"],
+    };
 
     const result = await wrapped({
       before: {
@@ -283,7 +272,6 @@ describe("memberEventsHandler", () => {
         name: "my string event 2",
       }
     );
-
   });
 
   it("should ignore previously sent string field events", async () => {
@@ -292,7 +280,7 @@ describe("memberEventsHandler", () => {
       mailchimpMemberEvents: JSON.stringify({
         memberEvents: ["events1", "events2"],
         subscriberEmail: "emailAddress",
-      })
+      }),
     });
     const wrapped = testEnv.wrap(api.memberEventsHandler);
 
@@ -301,13 +289,13 @@ describe("memberEventsHandler", () => {
       displayName: "lee",
       emailAddress: "test@example.com",
       events1: "my string event 1",
-      events2: "my string event 2"
+      events2: "my string event 2",
     };
 
     const afterUser = {
       ...beforeUser,
       events1: "my string event 3",
-    }
+    };
 
     const result = await wrapped({
       before: {
@@ -327,7 +315,6 @@ describe("memberEventsHandler", () => {
         name: "my string event 3",
       }
     );
-
   });
 
   it("should ignore previously sent string field events", async () => {
@@ -336,7 +323,7 @@ describe("memberEventsHandler", () => {
       mailchimpMemberEvents: JSON.stringify({
         memberEvents: ["events1", "events2"],
         subscriberEmail: "emailAddress",
-      })
+      }),
     });
     const wrapped = testEnv.wrap(api.memberEventsHandler);
 
@@ -345,14 +332,14 @@ describe("memberEventsHandler", () => {
       displayName: "lee",
       emailAddress: "test@example.com",
       events1: ["my string event 1"],
-      events2: ["my string event 2"]
+      events2: ["my string event 2"],
     };
 
     const afterUser = {
       ...beforeUser,
       events1: ["my string event 1", "my string event 3"],
-      events2: ["my string event 4"]
-    }
+      events2: ["my string event 4"],
+    };
 
     const result = await wrapped({
       before: {
@@ -385,9 +372,13 @@ describe("memberEventsHandler", () => {
     configureApi({
       ...defaultConfig,
       mailchimpMemberEvents: JSON.stringify({
-        memberEvents: ["events1", { documentPath: "events2" }, { documentPath: "events3[*].eventKey"}],
+        memberEvents: [
+          "events1",
+          { documentPath: "events2" },
+          { documentPath: "events3[*].eventKey" },
+        ],
         subscriberEmail: "emailAddress",
-      })
+      }),
     });
     const wrapped = testEnv.wrap(api.memberEventsHandler);
 
@@ -397,15 +388,21 @@ describe("memberEventsHandler", () => {
       emailAddress: "test@example.com",
       events1: ["my string event 1"],
       events2: ["my string event 2"],
-      events3: [{ "eventKey": "my string event 3"},{ "eventKey": "my string event 4"}]
+      events3: [
+        { eventKey: "my string event 3" },
+        { eventKey: "my string event 4" },
+      ],
     };
 
     const afterUser = {
       ...beforeUser,
       events1: ["my string event 1", "my string event 5"],
       events2: ["my string event 6"],
-      events3: [{ "eventKey": "my string event 3"},{ "eventKey": "my string event 7"}]
-    }
+      events3: [
+        { eventKey: "my string event 3" },
+        { eventKey: "my string event 7" },
+      ],
+    };
 
     const result = await wrapped({
       before: {
