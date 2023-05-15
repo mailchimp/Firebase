@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const _ = require('lodash');
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const Mailchimp = require('mailchimp-api-v3');
+const mailchimp = require('@mailchimp/mailchimp_marketing');
 const validation = require("./validation");
 const jmespath = require('jmespath');
 
@@ -61,10 +61,29 @@ const processConfig = (configInput) => {
   }, {});
 }
 
-let mailchimp;
+
 try {
-  // Create a new Mailchimp object instance
-  mailchimp = new Mailchimp(config.mailchimpOAuthToken);
+  // Configure mailchimp api client
+  // The datacenter id is appended to the API key in the form key-dc; 
+  //if your API key is 0123456789abcdef0123456789abcde-us6, then the data center subdomain is us6
+  // See https://mailchimp.com/developer/marketing/guides/quick-start/
+  // See https://github.com/mailchimp/mailchimp-marketing-node/
+  // See https://mailchimp.com/developer/marketing/guides/access-user-data-oauth-2/
+  const apiKey = config.mailchimpOAuthToken;
+  
+  const apiKeyParts = apiKey.split('-');
+  
+  if (apiKeyParts.length === 2){
+    const server = apiKeyParts.pop();
+    mailchimp.setConfig({
+      apiKey: apiKey,       
+      server: server,
+    });
+  } else {
+    throw new Error('Unable to set Mailchimp configuration');
+  }
+
+
   processConfig(config)
   
 } catch (err) {
@@ -97,13 +116,11 @@ exports.addUserToList = functions.handler.auth.user.onCreate(
 
     try {
       logs.userAdding(uid, config.mailchimpAudienceId);
-      const results = await mailchimp.post(
-        `/lists/${config.mailchimpAudienceId}/members`,
-        {
-          email_address: email,
-          status: config.mailchimpContactStatus,
-        }
-      );
+      const results = await mailchimp.lists.addListMember(config.mailchimpAudienceId, {
+        email_address: email,
+        status: config.mailchimpContactStatus,
+      });
+
       logs.userAdded(
         uid,
         config.mailchimpAudienceId,
@@ -136,8 +153,9 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
       const hashed = subscriberHasher(email);
 
       logs.userRemoving(uid, hashed, config.mailchimpAudienceId);
-      await mailchimp.delete(
-        `/lists/${config.mailchimpAudienceId}/members/${hashed}`
+      await mailchimp.lists.deleteListMember(
+        config.mailchimpAudienceId,
+        hashed
       );
       logs.userRemoved(uid, hashed, config.mailchimpAudienceId);
       logs.complete();
@@ -200,7 +218,11 @@ exports.memberTagsHandler = functions.handler.firestore.document
 
       // Invoke mailchimp API with updated tags
       if (tags && tags.length) {
-        await mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}/tags`, { tags });
+        await mailchimp.lists.updateListMemberTags(
+          config.mailchimpAudienceId,
+          subscriberHash,
+          { tags: tags }
+        );
       }
     } catch (e) {
       functions.logger.log(e);
@@ -282,7 +304,11 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
 
       // Invoke mailchimp API with updated data
       if (params.merge_fields || params.status) {
-        await mailchimp.put(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}`, params);
+        await mailchimp.lists.setListMember(
+          config.mailchimpAudienceId,
+          subscriberHash,
+          params
+        );
       }
     } catch (e) {
       functions.logger.log(e);
@@ -340,7 +366,12 @@ exports.memberEventsHandler = functions.handler.firestore.document
       // Invoke mailchimp API with updated tags
       if (memberEvents && memberEvents.length) {
         const requests = memberEvents.reduce((acc, name) => {
-          acc.push(mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}/events`, { name }));
+          acc.push(
+            mailchimp.lists.createListMemberEvent(
+              config.mailchimpAudienceId,
+              subscriberHash,
+              { name: name })
+            );
           return acc;
         }, []);
         await Promise.all(requests);

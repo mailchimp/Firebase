@@ -1,7 +1,9 @@
+jest.mock("@mailchimp/mailchimp_marketing");
+
 const functions = require("firebase-functions-test");
+const mailchimp = require("@mailchimp/mailchimp_marketing");
 const defaultConfig = require("./utils").defaultConfig;
 const testEnv = functions();
-jest.mock('mailchimp-api-v3');
 
 // configure config mocks (so we can inject config and try different scenarios)
 jest.doMock("../config", () => defaultConfig);
@@ -9,17 +11,12 @@ jest.doMock("../config", () => defaultConfig);
 const api = require("../index");
 
 describe("memberTagsHandler", () => {
-  let mailchimpMock
   let configureApi = (config) => {
     api.processConfig(config);
   };
 
-  beforeAll(() =>{
-    mailchimpMock = require('mailchimp-api-v3')
-  })
-
   beforeEach(() => {
-    mailchimpMock.__clearMocks()
+    jest.clearAllMocks();
   });
 
   afterAll(() => {
@@ -42,7 +39,7 @@ describe("memberTagsHandler", () => {
     });
 
     expect(result).toBe(null);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(0);
   });
 
   it("should make no calls with config missing memberEvents", async () => {
@@ -50,7 +47,7 @@ describe("memberTagsHandler", () => {
       ...defaultConfig,
       mailchimpMemberTags: JSON.stringify({
         subscriberEmail: "emailAddress",
-      })
+      }),
     });
     const wrapped = testEnv.wrap(api.memberTagsHandler);
 
@@ -68,16 +65,16 @@ describe("memberTagsHandler", () => {
     });
 
     expect(result).toBe(null);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(0);
   });
 
   it("should make no calls with config specifying invalid memberTags", async () => {
     configureApi({
       ...defaultConfig,
       mailchimpMemberTags: JSON.stringify({
-        memberTags: [{ field1: "test"}],
+        memberTags: [{ field1: "test" }],
         subscriberEmail: "emailAddress",
-      })
+      }),
     });
     const wrapped = testEnv.wrap(api.memberTagsHandler);
 
@@ -95,7 +92,7 @@ describe("memberTagsHandler", () => {
     });
 
     expect(result).toBe(null);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(0);
   });
 
   it("should make no calls when subscriberEmail field not found in document", async () => {
@@ -121,7 +118,7 @@ describe("memberTagsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledTimes(0);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(0);
   });
 
   it("should set tags for new user", async () => {
@@ -149,8 +146,10 @@ describe("memberTagsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith(
-      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/tags",
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
       {
         tags: [
           { name: "tagValue1", status: "active" },
@@ -187,8 +186,10 @@ describe("memberTagsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith(
-      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/tags",
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
       {
         tags: [
           { name: "tagValue1", status: "active" },
@@ -225,8 +226,10 @@ describe("memberTagsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith(
-      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/tags",
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
       {
         tags: [
           { name: "tagValue1", status: "active" },
@@ -237,48 +240,53 @@ describe("memberTagsHandler", () => {
   });
 
   it("should set tags from multidimensional nested config for new user", async () => {
-        configureApi({
-          ...defaultConfig,
-          mailchimpMemberTags: JSON.stringify({
-            memberTags: ["tag_data.field_1", { documentPath: "tag_data.field_2[*].value"}],
-            subscriberEmail: "emailAddress",
-          }),
-        });
-        const wrapped = testEnv.wrap(api.memberTagsHandler);
-    
-        const testUser = {
-          uid: "122",
-          displayName: "lee",
-          emailAddress: "test@example.com",
-          tag_data: {
-            field_1: "tagValue1",
-            field_2: [
-              { label : "label_1", value: "value_1" },
-              { label : "label_2", value: "value_2" },
-              { label : "label_3", value: "value_3" },
-            ],
-          },
-        };
-    
-        const result = await wrapped({
-          after: {
-            data: () => testUser,
-          },
-        });
-    
-        expect(result).toBe(undefined);
-        expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith(
-          "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/tags",
-          {
-            tags: [
-              { name: "tagValue1", status: "active" },
-              { name: "value_1", status: "active" },
-              { name: "value_2", status: "active" },
-              { name: "value_3", status: "active" },
-            ],
-          }
-        );
-      });
+    configureApi({
+      ...defaultConfig,
+      mailchimpMemberTags: JSON.stringify({
+        memberTags: [
+          "tag_data.field_1",
+          { documentPath: "tag_data.field_2[*].value" },
+        ],
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.memberTagsHandler);
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+      emailAddress: "test@example.com",
+      tag_data: {
+        field_1: "tagValue1",
+        field_2: [
+          { label: "label_1", value: "value_1" },
+          { label: "label_2", value: "value_2" },
+          { label: "label_3", value: "value_3" },
+        ],
+      },
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        tags: [
+          { name: "tagValue1", status: "active" },
+          { name: "value_1", status: "active" },
+          { name: "value_2", status: "active" },
+          { name: "value_3", status: "active" },
+        ],
+      }
+    );
+  });
 
   it("should update tags for changed user", async () => {
     configureApi({
@@ -316,8 +324,10 @@ describe("memberTagsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith(
-      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/tags",
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
       {
         tags: [
           { name: "tagValue1", status: "inactive" },
@@ -365,8 +375,10 @@ describe("memberTagsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith(
-      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/tags",
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
       {
         tags: [
           { name: "tagValue1", status: "inactive" },
@@ -410,8 +422,10 @@ describe("memberTagsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimpMock.__mocks.post).toHaveBeenCalledWith(
-      "/lists/mailchimpAudienceId/members/55502f40dc8b7c769880b10874abc9d0/tags",
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
       {
         tags: [
           { name: "data_1", status: "active" },

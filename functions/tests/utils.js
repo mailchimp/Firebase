@@ -1,7 +1,7 @@
 // default configuration for testing
 const defaultConfig = {
   location: "location",
-  mailchimpOAuthToken: "mailchimpOAuthToken",
+  mailchimpOAuthToken: "mailchimpOAuthToken-us9",
   mailchimpAudienceId: "mailchimpAudienceId",
   mailchimpContactStatus: "mailchimpContactStatus",
   mailchimpMemberTagsWatchPath: "_unused_",

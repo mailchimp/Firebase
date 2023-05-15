@@ -3,7 +3,7 @@
   "description": "Add new users to a Mailchimp list, and delete them from the list when they delete their account.",
   "main": "index.js",
   "scripts": {
-    "gcp-build":"",
+    "gcp-build": "",
     "test": "jest",
     "test:watch": "jest --watch",
     "generate-readme": "firebase ext:info .. --markdown > ../README.md",
@@ -11,12 +11,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@mailchimp/mailchimp_marketing": "^3.0.80",
     "firebase-admin": "^11.4.1",
     "firebase-functions": "^3.24.1",
     "jmespath": "^0.16.0",
     "jsonschema": "^1.4.1",
-    "lodash": "^4.17.21",
-    "mailchimp-api-v3": "^1.15.0"
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "eslint": "^8.31.0",
