@@ -70,4 +70,15 @@ module.exports = {
       `Removing user: ${userId} with hashed email: ${hashedEmail} from Mailchimp audience: ${audienceId}`
     );
   },
+  attemptFailed: (attempt, retries) => {
+    if(attempt >= retries) {
+      let content = `Attempt ${attempt} failed. Max retries (${retries}) reached, failing operation.`
+      if(retries === 0) {
+        content += ` If this looks to be a transient error, please set the MAILCHIMP_RETRY_ATTEMPTS configuration value to non-zero value.`
+      }
+      logger.warn(content)
+    } else {
+      logger.warn(`Attempt ${attempt} failed. Waiting to attempt retry of operation. Max retries: ${retries}.`)
+    }
+  },
 };

@@ -2,7 +2,7 @@ jest.mock("@mailchimp/mailchimp_marketing");
 
 const functions = require("firebase-functions-test");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
-const defaultConfig = require("./utils").defaultConfig;
+const { errorWithStatus, defaultConfig } = require("./utils");
 const testEnv = functions();
 
 // configure config mocks (so we can inject config and try different scenarios)
@@ -16,6 +16,7 @@ describe("mergeFieldsHandler", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mailchimp.lists.setListMember = jest.fn();
   });
 
   afterAll(() => {
@@ -199,6 +200,60 @@ describe("mergeFieldsHandler", () => {
 
     expect(result).toBe(undefined);
     expect(mailchimp.lists.setListMember).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.setListMember).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        email_address: "test@example.com",
+        merge_fields: {
+          FNAME: "new first name",
+          LNAME: "new last name",
+          PHONE: "new phone number",
+        },
+        status_if_new: "mailchimpContactStatus",
+      }
+    );
+  });
+
+  it.each`
+  retryAttempts
+  ${0}
+  ${2}
+  `("should retry '$retryAttempts' times on operation error", async ({retryAttempts}) => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpRetryAttempts: retryAttempts.toString(),
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+          phoneNumber: "PHONE",
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+    mailchimp.lists.setListMember.mockImplementation(() => {
+      throw errorWithStatus(404);
+    });
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "new first name",
+      lastName: "new last name",
+      phoneNumber: "new phone number",
+      emailAddress: "test@example.com",
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimp.lists.setListMember).toHaveBeenCalledTimes(retryAttempts + 1);
     expect(mailchimp.lists.setListMember).toHaveBeenCalledWith(
       "mailchimpAudienceId",
       "55502f40dc8b7c769880b10874abc9d0",

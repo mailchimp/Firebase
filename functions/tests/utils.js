@@ -10,8 +10,16 @@ const defaultConfig = {
   mailchimpMergeField: "{}",
   mailchimpMemberEventsWatchPath: "_unused_",
   mailchimpMemberEvents: "{}",
+  mailchimpRetryAttempts: "0",
+};
+
+const errorWithStatus = (status) => {
+  const err = new Error();
+  err.status = status;
+  return err;
 };
 
 module.exports = {
-  defaultConfig
+  defaultConfig,
+  errorWithStatus
 };

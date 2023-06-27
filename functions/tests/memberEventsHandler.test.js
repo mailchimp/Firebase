@@ -2,7 +2,7 @@ jest.mock("@mailchimp/mailchimp_marketing");
 
 const functions = require("firebase-functions-test");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
-const defaultConfig = require("./utils").defaultConfig;
+const { errorWithStatus, defaultConfig } = require("./utils");
 const testEnv = functions();
 
 // configure config mocks (so we can inject config and try different scenarios)
@@ -19,6 +19,7 @@ describe("memberEventsHandler", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mailchimp.lists.createListMemberEvent = jest.fn();
   });
 
   afterAll(() => {
@@ -93,6 +94,56 @@ describe("memberEventsHandler", () => {
     expect(result).toBe(null);
     expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(0);
   });
+
+  it.each`
+  retryAttempts
+  ${0}
+  ${2}
+  `("should retry '$retryAttempts' times on operation error", async ({retryAttempts}) => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpRetryAttempts: retryAttempts.toString(),
+      mailchimpMemberEvents: JSON.stringify({
+        memberEvents: ["events"],
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.memberEventsHandler);
+
+    mailchimp.lists.createListMemberEvent.mockImplementation(() => {
+      throw errorWithStatus(404);
+    });
+
+    const beforeUser = {
+      uid: "122",
+      displayName: "lee",
+      emailAddress: "test@example.com",
+    };
+
+    const afterUser = {
+      ...beforeUser,
+      events: "my string event",
+    };
+
+    const result = await wrapped({
+      before: {
+        data: () => beforeUser,
+      },
+      after: {
+        data: () => afterUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(retryAttempts+1);
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        name: "my string event",
+      }
+    );
+  }, 10000);
 
   it("should add string events when none were existing", async () => {
     configureApi({

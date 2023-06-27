@@ -90,14 +90,82 @@ try {
   logs.initError(err);
 }
 
+/**
+ * MD5 hashes the email address, for use as the mailchimp identifier
+ * @param {string} email 
+ * @returns {string} The MD5 Hash
+ */
 const subscriberHasher = (email) => crypto.createHash("md5").update(email.toLowerCase()).digest("hex");
 
+/**
+ * Extracts the subscriber email from a document, based on a string path. Uses lodash's "get" function.
+ * @param {any} prevDoc 
+ * @param {any} newDoc 
+ * @param {string} emailPath 
+ * @returns {string} the subscribers email
+ */
 const getSubscriberEmail = (prevDoc, newDoc, emailPath) => _.get(prevDoc, emailPath, false) || _.get(newDoc, emailPath)
 
+/**
+ * Uses JMESPath to retrieve a value from a document.
+ * @param {any} doc 
+ * @param {string | { documentPath: string }} documentPathOrConfig 
+ * @param {string} defaultValue
+ * @returns 
+ */
 const resolveValueFromDocumentPath = (doc, documentPathOrConfig, defaultValue = undefined) => {
   const documentSelector = _.isObject(documentPathOrConfig) ? documentPathOrConfig.documentPath : documentPathOrConfig
   return jmespath.search(doc, documentSelector) ?? defaultValue
 };
+
+/**
+ * Determines a period to wait, based on an exponential backoff function.
+ * @param {number} attempt 
+ * @returns {Promise<void>}
+ */
+const wait = async (attempt) => {
+  const random = Math.random() + 1;
+  const factor = 2;
+  const minTimeout = 500;
+  const maxTimeout = 2000;
+  const time = Math.min(random * minTimeout * Math.pow(factor, attempt), maxTimeout)
+  return new Promise((resolve) => setTimeout(resolve, time));
+}
+
+/**
+ * Attempts the provided function
+ * @template T
+ * @param {() => Promise<T>} fn The function to try with retries
+ * @param {(err: any) => boolean} errorFilter Return true to retry this error (optional). Default is to retry all errors.
+ * @returns {Promise<T>} The response of the function or the first error thrown.
+ */
+const retry = async (fn, errorFilter) => {
+  let attempt = 0, firstError = null;
+  const retries = Math.max(0, parseInt(config.mailchimpRetryAttempts));
+  do {
+    try {
+      return await fn();
+    } catch(err) {
+      if(errorFilter && !errorFilter(err))
+      {
+        throw err;
+      }
+      
+      if(!firstError) firstError = err;
+      logs.attemptFailed(attempt, retries);
+      attempt+=1;
+      if(attempt <= retries) {
+        await wait(attempt);
+      }
+    }
+  } while(attempt <= retries);
+
+  throw firstError;
+}
+
+const errorFilterFor404 = (err) => {
+  return err?.status === 404;
+}
 
 exports.addUserToList = functions.handler.auth.user.onCreate(
   async (user) => {
@@ -116,6 +184,7 @@ exports.addUserToList = functions.handler.auth.user.onCreate(
 
     try {
       logs.userAdding(uid, config.mailchimpAudienceId);
+      // this call is not retried, as a 404 here indicates the audience ID is incorrect which will not change.
       const results = await mailchimp.lists.addListMember(config.mailchimpAudienceId, {
         email_address: email,
         status: config.mailchimpContactStatus,
@@ -153,10 +222,10 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
       const hashed = subscriberHasher(email);
 
       logs.userRemoving(uid, hashed, config.mailchimpAudienceId);
-      await mailchimp.lists.deleteListMember(
+      await retry(() => mailchimp.lists.deleteListMember(
         config.mailchimpAudienceId,
         hashed
-      );
+      ), errorFilterFor404);
       logs.userRemoved(uid, hashed, config.mailchimpAudienceId);
       logs.complete();
     } catch (err) {
@@ -218,11 +287,11 @@ exports.memberTagsHandler = functions.handler.firestore.document
 
       // Invoke mailchimp API with updated tags
       if (tags && tags.length) {
-        await mailchimp.lists.updateListMemberTags(
+        await retry(() => mailchimp.lists.updateListMemberTags(
           config.mailchimpAudienceId,
           subscriberHash,
           { tags: tags }
-        );
+        ), errorFilterFor404);
       }
     } catch (e) {
       functions.logger.log(e);
@@ -304,11 +373,11 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
 
       // Invoke mailchimp API with updated data
       if (params.merge_fields || params.status) {
-        await mailchimp.lists.setListMember(
+        await retry(() => mailchimp.lists.setListMember(
           config.mailchimpAudienceId,
           subscriberHash,
           params
-        );
+        ), errorFilterFor404);
       }
     } catch (e) {
       functions.logger.log(e);
@@ -367,11 +436,11 @@ exports.memberEventsHandler = functions.handler.firestore.document
       if (memberEvents && memberEvents.length) {
         const requests = memberEvents.reduce((acc, name) => {
           acc.push(
-            mailchimp.lists.createListMemberEvent(
+            retry(() => mailchimp.lists.createListMemberEvent(
               config.mailchimpAudienceId,
               subscriberHash,
               { name: name })
-            );
+            ), errorFilterFor404);
           return acc;
         }, []);
         await Promise.all(requests);
