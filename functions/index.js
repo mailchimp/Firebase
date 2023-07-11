@@ -381,4 +381,220 @@ exports.memberEventsFirestoreHandler = functions.handler.firestore.document
     }
   });
 
+exports.memberTagsRealtimeHandler = functions.handler.database.ref
+  .onWrite(async (event) => {
+    // If an empty JSON configuration was provided then consider function as NO-OP
+    if (_.isEmpty(config.mailchimpMemberTags)) return null;
+
+    try {
+      // Get the configuration settings for mailchimp tags as is defined in extension.yml
+      const tagsConfig = config.mailchimpMemberTags;
+
+      // Validate proper configuration settings were provided
+      if (!mailchimp) {
+        logs.mailchimpNotInitialized();
+        return;
+      }
+      if (!tagsConfig.memberTags) {
+        functions.logger.log(`A property named 'memberTags' is required`);
+        return null;
+      }
+      if (!Array.isArray(tagsConfig.memberTags)) {
+        functions.logger.log('"memberTags" must be an array')
+        return null;
+      }
+
+      // Get snapshot of document before & after write event
+      const prevDoc = event && event.before && event.before.exists() && event.before.val();
+      const newDoc = event && event.after && event.after.exists() && event.after.val();
+
+      // Retrieves subscriber tags before/after write event
+      const getTagsFromEventSnapshot = snapshot => tagsConfig.memberTags.reduce((acc, tagConfig) => {
+        const tags = resolveValueFromDocumentPath(snapshot, tagConfig);
+        if (Array.isArray(tags) && tags && tags.length) {
+          acc = [...acc, ...tags];
+        } else if (tags) {
+          acc = acc.concat(tags);
+        }
+        return acc;
+      }, []);
+
+      // Determine all the tags prior to write event
+      const prevTags = prevDoc ? getTagsFromEventSnapshot(prevDoc) : [];
+      // Determine all the tags after write event
+      const newTags = newDoc ? getTagsFromEventSnapshot(newDoc) : [];
+
+      // Compute the delta between existing/new tags
+      const tagsToRemove = prevTags.filter(tag => !newTags.includes(tag)).map(tag => ({ name: tag, status: 'inactive' }));
+      const tagsToAdd = newTags.filter(tag => !prevTags.includes(tag)).map(tag => ({ name: tag, status: 'active' }));
+      const tags = [...tagsToRemove, ...tagsToAdd];
+
+      // Compute the mailchimp subscriber email hash
+      const subscriberHash = subscriberHasher(getSubscriberEmail(prevDoc, newDoc, tagsConfig.subscriberEmail));
+
+      // Invoke mailchimp API with updated tags
+      if (tags && tags.length) {
+        await mailchimp.lists.updateListMemberTags(
+          config.mailchimpAudienceId,
+          subscriberHash,
+          { tags: tags }
+        );
+      }
+    } catch (e) {
+      functions.logger.log(e);
+    }
+  });
+
+exports.mergeFieldsRealtimeHandler = functions.handler.database.ref
+  .onWrite(async (event) => {
+    // If an empty JSON configuration was provided then consider function as NO-OP
+    if (_.isEmpty(config.mailchimpMergeField)) return null;
+
+    try {
+      // Get the configuration settings for mailchimp merge fields as is defined in extension.yml
+      const mergeFieldsConfig = config.mailchimpMergeField;
+
+      // Validate proper configuration settings were provided
+      if (!mailchimp) {
+        logs.mailchimpNotInitialized();
+        return;
+      }
+      if (!mergeFieldsConfig.mergeFields || _.isEmpty(mergeFieldsConfig.mergeFields)) {
+        functions.logger.log(`A property named 'mergeFields' is required`);
+        return null;
+      }
+      if (!_.isObject(mergeFieldsConfig.mergeFields)) {
+        functions.logger.log('Merge Fields config must be an object');
+        return null;
+      }
+
+      // Get snapshot of document before & after write event
+      const prevDoc = event && event.before && event.before.exists() && event.before.val();
+      const newDoc = event && event.after && event.after.exists() && event.after.val();
+
+      // Determine all the merge prior to write event
+      const mergeFieldsToUpdate = Object.entries(mergeFieldsConfig.mergeFields).reduce((acc, [documentPath, mergeFieldConfig]) => {
+        const mergeFieldName = _.isObject(mergeFieldConfig) ? mergeFieldConfig.mailchimpFieldName : mergeFieldConfig;
+        
+        const prevMergeFieldValue = jmespath.search(prevDoc, documentPath);
+        // lookup the same field value in new snapshot
+        const newMergeFieldValue = jmespath.search(newDoc, documentPath) ?? "";
+
+        // if delta exists or the field should always be sent, then update accumulator collection
+        if (prevMergeFieldValue !== newMergeFieldValue || (_.isObject(mergeFieldConfig) && mergeFieldConfig.when && mergeFieldConfig.when === "always")) {
+          acc[mergeFieldName] = newMergeFieldValue;
+        }
+        return acc;
+      }, {});
+
+      // Compute the mailchimp subscriber email hash
+      const subscriberHash = subscriberHasher(getSubscriberEmail(prevDoc, newDoc, mergeFieldsConfig.subscriberEmail));
+
+      const params = {
+        status_if_new: config.mailchimpContactStatus,
+        email_address: _.get(newDoc, mergeFieldsConfig.subscriberEmail),
+      };
+
+      if(!_.isEmpty(mergeFieldsToUpdate)) {
+        params.merge_fields = mergeFieldsToUpdate
+      }
+
+      // sync status if opted in
+      if(_.isObject(mergeFieldsConfig.statusField)) {
+        const { documentPath, statusFormat } = mergeFieldsConfig.statusField
+        let prevStatusValue = jmespath.search(prevDoc, documentPath) ?? '';
+        // lookup the same field value in new snapshot
+        let newStatusValue = jmespath.search(newDoc, documentPath) ?? '';
+
+        if(statusFormat && statusFormat === "boolean"
+        ) {
+          prevStatusValue = prevStatusValue ? "subscribed" : "unsubscribed"
+          newStatusValue = newStatusValue ? "subscribed" : "unsubscribed"
+        }
+
+        if (prevStatusValue !== newStatusValue) {
+          params.status = newStatusValue
+          params.status_if_new = newStatusValue
+        }
+      }
+
+      // Invoke mailchimp API with updated data
+      if (params.merge_fields || params.status) {
+        await mailchimp.lists.setListMember(
+          config.mailchimpAudienceId,
+          subscriberHash,
+          params
+        );
+      }
+    } catch (e) {
+      functions.logger.log(e);
+    }
+  });
+
+exports.memberEventsRealtimeHandler = functions.handler.database.ref
+  .onWrite(async (event) => {
+    // If an empty JSON configuration was provided then consider function as NO-OP
+    if (_.isEmpty(config.mailchimpMemberEvents)) return null;
+
+    try {
+      // Get the configuration settings for mailchimp custom events as is defined in extension.yml
+      const eventsConfig = config.mailchimpMemberEvents;
+
+      // Validate proper configuration settings were provided
+      if (!mailchimp) {
+        logs.mailchimpNotInitialized();
+        return;
+      }
+      if (!eventsConfig.memberEvents) {
+        functions.logger.log(`A property named 'memberEvents' is required`);
+        return null;
+      }
+      if (!Array.isArray(eventsConfig.memberEvents)) {
+        functions.logger.log(`'memberEvents' property must be an array`);
+        return null;
+      }
+
+      // Get snapshot of document before & after write event
+      const prevDoc = event && event.before && event.before.exists() && event.before.val();
+      const newDoc = event && event.after && event.after.exists() && event.after.val();
+
+      // Retrieves subscriber tags before/after write event
+      const getMemberEventsFromSnapshot = snapshot => eventsConfig.memberEvents.reduce((acc, memberEventConfiguration) => {
+        const events = resolveValueFromDocumentPath(snapshot, memberEventConfiguration);
+        if (Array.isArray(events) && events && events.length) {
+          acc = [...acc, ...events];
+        } else if (events) {
+          acc = acc.concat(events);
+        }
+        return acc;
+      }, []);
+
+      // Get all member events prior to write event
+      const prevEvents = prevDoc ? getMemberEventsFromSnapshot(prevDoc) : [];
+      // Get all member events after write event
+      const newEvents = newDoc ? getMemberEventsFromSnapshot(newDoc) : [];
+      // Find the intersection of both collections
+      const memberEvents = newEvents.filter(event => !prevEvents.includes(event));
+
+      // Compute the mailchimp subscriber email hash
+      const subscriberHash = subscriberHasher(getSubscriberEmail(prevDoc, newDoc, eventsConfig.subscriberEmail));
+
+      // Invoke mailchimp API with updated tags
+      if (memberEvents && memberEvents.length) {
+        const requests = memberEvents.reduce((acc, name) => {
+          acc.push(
+            mailchimp.lists.createListMemberEvent(
+              config.mailchimpAudienceId,
+              subscriberHash,
+              { name: name })
+            );
+          return acc;
+        }, []);
+        await Promise.all(requests);
+      }
+    } catch (e) {
+      functions.logger.log(e);
+    }
+  });
+
 exports.processConfig = processConfig

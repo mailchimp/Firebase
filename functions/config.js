@@ -4,9 +4,15 @@ module.exports = {
   mailchimpAudienceId: process.env.MAILCHIMP_AUDIENCE_ID,
   mailchimpContactStatus: process.env.MAILCHIMP_CONTACT_STATUS,
   mailchimpMemberTagsWatchPath: process.env.MAILCHIMP_MEMBER_TAGS_WATCH_PATH,
+  mailchimpMemberTagsRealtimeDatabaseInstance: process.env.MAILCHIMP_MEMBER_TAGS_REALTIME_DATABASE_INSTANCE,
+  mailchimpMemberTagsRealtimeWatchPath: process.env.MAILCHIMP_MEMBER_TAGS_REALTIME_WATCH_PATH,
   mailchimpMemberTags: process.env.MAILCHIMP_MEMBER_TAGS_CONFIG,
   mailchimpMergeFieldWatchPath: process.env.MAILCHIMP_MERGE_FIELDS_WATCH_PATH,
+  mailchimpMergeFieldRealtimeDatabaseInstance: process.env.MAILCHIMP_MERGE_FIELDS_REALTIME_DATABASE_INSTANCE,
+  mailchimpMergeFieldRealtimeWatchPath: process.env.MAILCHIMP_MERGE_FIELDS_REALTIME_WATCH_PATH,
   mailchimpMergeField: process.env.MAILCHIMP_MERGE_FIELDS_CONFIG,
   mailchimpMemberEventsWatchPath: process.env.MAILCHIMP_MEMBER_EVENTS_WATCH_PATH,
-  mailchimpMemberEvents: process.env.MAILCHIMP_MEMBER_EVENTS_CONFIG
+  mailchimpMemberEventsRealtimeDatabaseInstance: process.env.MAILCHIMP_MEMBER_EVENTS_REALTIME_DATABASE_INSTANCE,
+  mailchimpMemberEventsRealtimeWatchPath: process.env.MAILCHIMP_MEMBER_EVENTS_REALTIME_WATCH_PATH,
+  mailchimpMemberEvents: process.env.MAILCHIMP_MEMBER_EVENTS_CONFIG,
 };
