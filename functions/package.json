@@ -8,7 +8,8 @@
     "test:watch": "jest --watch",
     "generate-readme": "firebase ext:info .. --markdown > ../README.md",
     "serve": "firebase emulators:start --project mailchimp-extension --only functions,firestore",
-    "lint": "eslint"
+    "lint": "eslint --max-warnings=0 .",
+    "lint:fix": "eslint --max-warnings=0 --fix ."
   },
   "dependencies": {
     "@mailchimp/mailchimp_marketing": "^3.0.80",

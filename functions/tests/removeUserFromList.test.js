@@ -2,7 +2,8 @@ jest.mock("@mailchimp/mailchimp_marketing");
 
 const functions = require("firebase-functions-test");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
-const defaultConfig = require("./utils").defaultConfig;
+const { defaultConfig } = require("./utils");
+
 const testEnv = functions();
 
 // configure config mocks (so we can inject config and try different scenarios)
@@ -11,7 +12,7 @@ jest.doMock("../config", () => defaultConfig);
 const api = require("../index");
 
 describe("removeUserFromList", () => {
-  let configureApi = (config) => {
+  const configureApi = (config) => {
     api.processConfig(config);
   };
 
@@ -48,7 +49,7 @@ describe("removeUserFromList", () => {
     expect(mailchimp.lists.deleteListMember).toHaveBeenCalledTimes(1);
     expect(mailchimp.lists.deleteListMember).toHaveBeenCalledWith(
       "mailchimpAudienceId",
-      "55502f40dc8b7c769880b10874abc9d0"
+      "55502f40dc8b7c769880b10874abc9d0",
     );
   });
 });

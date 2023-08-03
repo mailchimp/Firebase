@@ -2,7 +2,8 @@ jest.mock("@mailchimp/mailchimp_marketing");
 
 const functions = require("firebase-functions-test");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
-const defaultConfig = require("./utils").defaultConfig;
+const { defaultConfig } = require("./utils");
+
 const testEnv = functions();
 
 // configure config mocks (so we can inject config and try different scenarios)
@@ -11,7 +12,7 @@ jest.doMock("../config", () => defaultConfig);
 const api = require("../index");
 
 describe("memberTagsHandler", () => {
-  let configureApi = (config) => {
+  const configureApi = (config) => {
     api.processConfig(config);
   };
 
@@ -38,7 +39,7 @@ describe("memberTagsHandler", () => {
       },
     });
 
-    expect(result).toBe(null);
+    expect(result).toBe(undefined);
     expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(0);
   });
 
@@ -64,7 +65,7 @@ describe("memberTagsHandler", () => {
       },
     });
 
-    expect(result).toBe(null);
+    expect(result).toBe(undefined);
     expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(0);
   });
 
@@ -91,7 +92,7 @@ describe("memberTagsHandler", () => {
       },
     });
 
-    expect(result).toBe(null);
+    expect(result).toBe(undefined);
     expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(0);
   });
 
@@ -155,7 +156,7 @@ describe("memberTagsHandler", () => {
           { name: "tagValue1", status: "active" },
           { name: "tagValue2", status: "active" },
         ],
-      }
+      },
     );
   });
 
@@ -195,7 +196,7 @@ describe("memberTagsHandler", () => {
           { name: "tagValue1", status: "active" },
           { name: "tagValue2", status: "active" },
         ],
-      }
+      },
     );
   });
 
@@ -235,7 +236,7 @@ describe("memberTagsHandler", () => {
           { name: "tagValue1", status: "active" },
           { name: "tagValue2", status: "active" },
         ],
-      }
+      },
     );
   });
 
@@ -284,7 +285,7 @@ describe("memberTagsHandler", () => {
           { name: "value_2", status: "active" },
           { name: "value_3", status: "active" },
         ],
-      }
+      },
     );
   });
 
@@ -335,7 +336,7 @@ describe("memberTagsHandler", () => {
           { name: "tagValue3", status: "active" },
           { name: "tagValue4", status: "active" },
         ],
-      }
+      },
     );
   });
 
@@ -386,7 +387,7 @@ describe("memberTagsHandler", () => {
           { name: "tagValue3", status: "active" },
           { name: "tagValue4", status: "active" },
         ],
-      }
+      },
     );
   });
 
@@ -433,7 +434,7 @@ describe("memberTagsHandler", () => {
           { name: "data_3", status: "active" },
           { name: "data_4", status: "active" },
         ],
-      }
+      },
     );
   });
 });

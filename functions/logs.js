@@ -29,7 +29,7 @@ module.exports = {
   },
   userNotInAudience: () => {
     logger.log(
-      "Attempted removal failed, member deletion not allowed. Probably because member has already been removed from audience"
+      "Attempted removal failed, member deletion not allowed. Probably because member has already been removed from audience",
     );
   },
   errorRemoveUser: (err) => {
@@ -43,7 +43,7 @@ module.exports = {
   },
   mailchimpNotInitialized: () => {
     logger.error(
-      "Mailchimp was not initialized correctly, check for errors in the logs"
+      "Mailchimp was not initialized correctly, check for errors in the logs",
     );
   },
   start: () => {
@@ -51,7 +51,7 @@ module.exports = {
   },
   userAdded: (userId, audienceId, mailchimpId, status) => {
     logger.log(
-      `Added user: ${userId} with status '${status}' to Mailchimp audience: ${audienceId} with Mailchimp ID: ${mailchimpId}`
+      `Added user: ${userId} with status '${status}' to Mailchimp audience: ${audienceId} with Mailchimp ID: ${mailchimpId}`,
     );
   },
   userAdding: (userId, audienceId) => {
@@ -62,12 +62,12 @@ module.exports = {
   },
   userRemoved: (userId, hashedEmail, audienceId) => {
     logger.log(
-      `Removed user: ${userId} with hashed email: ${hashedEmail} from Mailchimp audience: ${audienceId}`
+      `Removed user: ${userId} with hashed email: ${hashedEmail} from Mailchimp audience: ${audienceId}`,
     );
   },
   userRemoving: (userId, hashedEmail, audienceId) => {
     logger.log(
-      `Removing user: ${userId} with hashed email: ${hashedEmail} from Mailchimp audience: ${audienceId}`
+      `Removing user: ${userId} with hashed email: ${hashedEmail} from Mailchimp audience: ${audienceId}`,
     );
   },
 };

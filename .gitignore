@@ -13,5 +13,3 @@ build/Release
 
 # Dependency directories
 functions/node_modules/
-
-.vscode

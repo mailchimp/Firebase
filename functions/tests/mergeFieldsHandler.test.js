@@ -2,7 +2,8 @@ jest.mock("@mailchimp/mailchimp_marketing");
 
 const functions = require("firebase-functions-test");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
-const defaultConfig = require("./utils").defaultConfig;
+const { defaultConfig } = require("./utils");
+
 const testEnv = functions();
 
 // configure config mocks (so we can inject config and try different scenarios)
@@ -10,7 +11,7 @@ jest.doMock("../config", () => defaultConfig);
 const api = require("../index");
 
 describe("mergeFieldsHandler", () => {
-  let configureApi = (config) => {
+  const configureApi = (config) => {
     api.processConfig(config);
   };
 
@@ -37,7 +38,7 @@ describe("mergeFieldsHandler", () => {
       },
     });
 
-    expect(result).toBe(null);
+    expect(result).toBe(undefined);
     expect(mailchimp.lists.setListMember).toHaveBeenCalledTimes(0);
   });
 
@@ -65,7 +66,7 @@ describe("mergeFieldsHandler", () => {
       },
     });
 
-    expect(result).toBe(null);
+    expect(result).toBe(undefined);
     expect(mailchimp.lists.setListMember).toHaveBeenCalledTimes(0);
   });
 
@@ -96,7 +97,7 @@ describe("mergeFieldsHandler", () => {
       },
     });
 
-    expect(result).toBe(null);
+    expect(result).toBe(undefined);
     expect(mailchimp.lists.setListMember).toHaveBeenCalledTimes(0);
   });
 
@@ -132,7 +133,7 @@ describe("mergeFieldsHandler", () => {
       },
     });
 
-    expect(result).toBe(null);
+    expect(result).toBe(undefined);
     expect(mailchimp.lists.setListMember).toHaveBeenCalledTimes(0);
   });
 
@@ -210,7 +211,7 @@ describe("mergeFieldsHandler", () => {
           PHONE: "new phone number",
         },
         status_if_new: "mailchimpContactStatus",
-      }
+      },
     );
   });
 
@@ -266,7 +267,7 @@ describe("mergeFieldsHandler", () => {
           PHONE: "new phone number",
         },
         status_if_new: "mailchimpContactStatus",
-      }
+      },
     );
   });
 
@@ -322,7 +323,7 @@ describe("mergeFieldsHandler", () => {
           PHONE: "",
         },
         status_if_new: "mailchimpContactStatus",
-      }
+      },
     );
   });
 
@@ -379,7 +380,7 @@ describe("mergeFieldsHandler", () => {
           HAS_THING: false,
         },
         status_if_new: "mailchimpContactStatus",
-      }
+      },
     );
   });
 
@@ -427,7 +428,7 @@ describe("mergeFieldsHandler", () => {
           PHONE: "new phone number",
         },
         status_if_new: "mailchimpContactStatus",
-      }
+      },
     );
   });
 
@@ -475,7 +476,7 @@ describe("mergeFieldsHandler", () => {
           PHONE: "new phone number",
         },
         status_if_new: "mailchimpContactStatus",
-      }
+      },
     );
   });
 
@@ -523,7 +524,7 @@ describe("mergeFieldsHandler", () => {
           PHONE: "new phone number",
         },
         status_if_new: "mailchimpContactStatus",
-      }
+      },
     );
   });
 
@@ -579,7 +580,7 @@ describe("mergeFieldsHandler", () => {
           LNAME: "new last name",
         },
         status_if_new: "mailchimpContactStatus",
-      }
+      },
     );
   });
 
@@ -670,7 +671,7 @@ describe("mergeFieldsHandler", () => {
           LATEST_CHANGE: "lastName",
         },
         status_if_new: "mailchimpContactStatus",
-      }
+      },
     );
   });
 
@@ -732,7 +733,7 @@ describe("mergeFieldsHandler", () => {
           LNAME: "new last name",
         },
         status_if_new: "mailchimpContactStatus",
-      }
+      },
     );
   });
 
@@ -790,7 +791,7 @@ describe("mergeFieldsHandler", () => {
           LNAME: "new last name",
         },
         status_if_new: "mailchimpContactStatus",
-      }
+      },
     );
   });
 
@@ -843,7 +844,7 @@ describe("mergeFieldsHandler", () => {
         email_address: "test@example.com",
         status: "pending",
         status_if_new: "pending",
-      }
+      },
     );
   });
 
@@ -897,7 +898,7 @@ describe("mergeFieldsHandler", () => {
         email_address: "test@example.com",
         status: "subscribed",
         status_if_new: "subscribed",
-      }
+      },
     );
   });
 
@@ -951,7 +952,53 @@ describe("mergeFieldsHandler", () => {
         email_address: "test@example.com",
         status: "unsubscribed",
         status_if_new: "unsubscribed",
-      }
+      },
+    );
+  });
+
+  it("should set data for user with hyphenated field", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          "\"last-name\"": "LNAME",
+          phoneNumber: "PHONE",
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "new first name",
+      "last-name": "new last name",
+      phoneNumber: "new phone number",
+      emailAddress: "test@example.com",
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimp.lists.setListMember).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.setListMember).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        email_address: "test@example.com",
+        merge_fields: {
+          FNAME: "new first name",
+          LNAME: "new last name",
+          PHONE: "new phone number",
+        },
+        status_if_new: "mailchimpContactStatus",
+      },
     );
   });
 });
