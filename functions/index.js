@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const _ = require("lodash");
-const functions = require("firebase-functions");
+const { auth, firestore, logger } = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
 const jmespath = require("jmespath");
@@ -25,7 +25,7 @@ function processConfig(configInput) {
   //  (tags, merge fields, custom events) at the root.
   config = Object.entries(configInput).reduce((acc, [key, value]) => {
     const logError = (message) => {
-      functions.logger.log(message, key, value);
+      logger.log(message, key, value);
       return acc;
     };
     if (configInput[key] && Object.keys(CONFIG_PARAMS).includes(key)) {
@@ -180,7 +180,7 @@ function errorFilterFor404(err) {
   return err?.status === 404;
 }
 
-exports.addUserToList = functions.handler.auth.user.onCreate(
+exports.addUserToList = auth.user().onCreate(
   async (user) => {
     logs.start();
 
@@ -221,7 +221,7 @@ exports.addUserToList = functions.handler.auth.user.onCreate(
   },
 );
 
-exports.removeUserFromList = functions.handler.auth.user.onDelete(
+exports.removeUserFromList = auth.user().onDelete(
   async (user) => {
     logs.start();
 
@@ -256,7 +256,7 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
   },
 );
 
-exports.memberTagsHandler = functions.handler.firestore.document
+exports.memberTagsHandler = firestore.document(config.mailchimpMemberTagsWatchPath)
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMemberTags)) return;
@@ -271,11 +271,11 @@ exports.memberTagsHandler = functions.handler.firestore.document
         return;
       }
       if (!tagsConfig.memberTags) {
-        functions.logger.log(`A property named 'memberTags' is required`);
+        logger.log(`A property named 'memberTags' is required`);
         return;
       }
       if (!Array.isArray(tagsConfig.memberTags)) {
-        functions.logger.log("\"memberTags\" must be an array");
+        logger.log("\"memberTags\" must be an array");
         return;
       }
 
@@ -320,11 +320,11 @@ exports.memberTagsHandler = functions.handler.firestore.document
         ), errorFilterFor404);
       }
     } catch (e) {
-      functions.logger.log(e);
+      logger.log(e);
     }
   });
 
-exports.mergeFieldsHandler = functions.handler.firestore.document
+exports.mergeFieldsHandler = firestore.document(config.mailchimpMergeFieldWatchPath)
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMergeField)) return;
@@ -339,11 +339,11 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
         return;
       }
       if (!mergeFieldsConfig.mergeFields || _.isEmpty(mergeFieldsConfig.mergeFields)) {
-        functions.logger.log(`A property named 'mergeFields' is required`);
+        logger.log(`A property named 'mergeFields' is required`);
         return;
       }
       if (!_.isObject(mergeFieldsConfig.mergeFields)) {
-        functions.logger.log("Merge Fields config must be an object");
+        logger.log("Merge Fields config must be an object");
         return;
       }
 
@@ -410,11 +410,11 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
         ), errorFilterFor404);
       }
     } catch (e) {
-      functions.logger.log(e);
+      logger.log(e);
     }
   });
 
-exports.memberEventsHandler = functions.handler.firestore.document
+exports.memberEventsHandler = firestore.document(config.mailchimpMemberEventsWatchPath)
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMemberEvents)) return;
@@ -429,11 +429,11 @@ exports.memberEventsHandler = functions.handler.firestore.document
         return;
       }
       if (!eventsConfig.memberEvents) {
-        functions.logger.log(`A property named 'memberEvents' is required`);
+        logger.log(`A property named 'memberEvents' is required`);
         return;
       }
       if (!Array.isArray(eventsConfig.memberEvents)) {
-        functions.logger.log(`'memberEvents' property must be an array`);
+        logger.log(`'memberEvents' property must be an array`);
         return;
       }
 
@@ -482,7 +482,7 @@ exports.memberEventsHandler = functions.handler.firestore.document
         await Promise.all(requests);
       }
     } catch (e) {
-      functions.logger.log(e);
+      logger.log(e);
     }
   });
 
