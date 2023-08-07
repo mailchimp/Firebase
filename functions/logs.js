@@ -72,16 +72,16 @@ module.exports = {
   },
   attemptFailed: (attempt, retries) => {
     if (attempt >= retries) {
-      let content = `Attempt ${attempt} failed. Max retries (${retries}) reached, failing operation.`
+      let content = `Attempt ${attempt} failed. Max retries (${retries}) reached, failing operation.`;
       if (retries === 0) {
-        content += ` If this looks to be a transient error, please set the MAILCHIMP_RETRY_ATTEMPTS configuration value to non-zero value.`
+        content += ` If this looks to be a transient error, please set the MAILCHIMP_RETRY_ATTEMPTS configuration value to non-zero value.`;
       }
-      logger.warn(content)
+      logger.warn(content);
     } else {
-      logger.warn(`Attempt ${attempt} failed. Waiting to attempt retry of operation. Max retries: ${retries}.`)
+      logger.warn(`Attempt ${attempt} failed. Waiting to attempt retry of operation. Max retries: ${retries}.`);
     }
   },
   subsequentAttemptRecovered: (attempt) => {
-    logger.info(`Attempt ${attempt} succeeded, operation recovered.`)
-  }
+    logger.info(`Attempt ${attempt} succeeded, operation recovered.`);
+  },
 };
