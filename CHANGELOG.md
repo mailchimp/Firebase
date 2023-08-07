@@ -1,9 +1,9 @@
 ## Version 0.5.4
 
 - Switch from mailchimp-api-v3 package to @mailchimp/mailchimp_marketing (PR #66)
-- Add a configurable retry to allow a higher chance of requests causing transient failures to succeed (#69)
-- Added linter config and updated packages. (#70)
-- Node.JS 18 runtime for functions
+- Add a configurable retry to allow a higher chance of requests causing transient failures to succeed (PR #69)
+- Added linter config and updated packages. (PR #70)
+- Node.JS 18 runtime for functions (PR #73)
 
 ## Version 0.5.3
 
