@@ -2,7 +2,7 @@ jest.mock("@mailchimp/mailchimp_marketing");
 
 const functions = require("firebase-functions-test");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
-const defaultConfig = require("./utils").defaultConfig;
+const { defaultConfig } = require("./utils");
 const testEnv = functions();
 
 // configure config mocks (so we can inject config and try different scenarios)
@@ -17,6 +17,7 @@ describe("addUserToList", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mailchimp.lists.addListMember = jest.fn()
   });
 
   afterAll(() => {

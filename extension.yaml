@@ -188,6 +188,18 @@ params:
     example: 1ab2345c67
     required: true
 
+  - param: MAILCHIMP_RETRY_ATTEMPTS
+    label: Mailchimp Retry Attempts
+    description: >-
+      The number of attempts to retry operation against Mailchimp. 
+      Race conditions can occur between user creation events and user update events, and this allows the extension to retry operations that failed transiently. 
+      Currently this is limited to 404 responses for removeUserFromList, memberTagsHandler, mergeFieldsHandler and memberEventsHandler calls.
+    type: string
+    validationRegex: "^[0-9]$"
+    validationErrorMessage: The number of attempts must be an integer value between 0 and 9.
+    default: "2"
+    required: true
+
   - param: MAILCHIMP_CONTACT_STATUS
     label: Contact status
     description: >-
