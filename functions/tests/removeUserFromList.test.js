@@ -3,6 +3,7 @@ jest.mock("@mailchimp/mailchimp_marketing");
 const functions = require("firebase-functions-test");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
 const { errorWithStatus, defaultConfig } = require("./utils");
+
 const testEnv = functions();
 
 // configure config mocks (so we can inject config and try different scenarios)
@@ -11,7 +12,7 @@ jest.doMock("../config", () => defaultConfig);
 const api = require("../index");
 
 describe("removeUserFromList", () => {
-  let configureApi = (config) => {
+  const configureApi = (config) => {
     api.processConfig(config);
   };
 
@@ -48,7 +49,7 @@ describe("removeUserFromList", () => {
     expect(mailchimp.lists.deleteListMember).toHaveBeenCalledTimes(1);
     expect(mailchimp.lists.deleteListMember).toHaveBeenCalledWith(
       "mailchimpAudienceId",
-      "55502f40dc8b7c769880b10874abc9d0"
+      "55502f40dc8b7c769880b10874abc9d0",
     );
   });
 
@@ -56,7 +57,7 @@ describe("removeUserFromList", () => {
   retryAttempts
   ${0}
   ${2}
-  `("should retry '$retryAttempts' times on operation error", async ({retryAttempts}) => {
+  `("should retry '$retryAttempts' times on operation error", async ({ retryAttempts }) => {
     configureApi({
       ...defaultConfig,
       mailchimpRetryAttempts: retryAttempts.toString(),
@@ -74,10 +75,10 @@ describe("removeUserFromList", () => {
     const result = await wrapped(testUser);
 
     expect(result).toBe(undefined);
-    expect(mailchimp.lists.deleteListMember).toHaveBeenCalledTimes(retryAttempts+1);
+    expect(mailchimp.lists.deleteListMember).toHaveBeenCalledTimes(retryAttempts + 1);
     expect(mailchimp.lists.deleteListMember).toHaveBeenCalledWith(
       "mailchimpAudienceId",
-      "55502f40dc8b7c769880b10874abc9d0"
+      "55502f40dc8b7c769880b10874abc9d0",
     );
-  })
+  });
 });

@@ -3,6 +3,7 @@ jest.mock("@mailchimp/mailchimp_marketing");
 const functions = require("firebase-functions-test");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
 const { errorWithStatus, defaultConfig } = require("./utils");
+
 const testEnv = functions();
 
 // configure config mocks (so we can inject config and try different scenarios)
@@ -11,11 +12,11 @@ jest.doMock("../config", () => defaultConfig);
 const api = require("../index");
 
 describe("memberEventsHandler", () => {
-  let configureApi = (config) => {
+  const configureApi = (config) => {
     api.processConfig(config);
   };
 
-  beforeAll(() => {});
+  beforeAll(() => { });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -41,7 +42,7 @@ describe("memberEventsHandler", () => {
       },
     });
 
-    expect(result).toBe(null);
+    expect(result).toBe(undefined);
     expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(0);
   });
 
@@ -65,7 +66,7 @@ describe("memberEventsHandler", () => {
       },
     });
 
-    expect(result).toBe(null);
+    expect(result).toBe(undefined);
     expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(0);
   });
 
@@ -91,7 +92,7 @@ describe("memberEventsHandler", () => {
       },
     });
 
-    expect(result).toBe(null);
+    expect(result).toBe(undefined);
     expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(0);
   });
 
@@ -99,7 +100,7 @@ describe("memberEventsHandler", () => {
   retryAttempts
   ${0}
   ${2}
-  `("should retry '$retryAttempts' times on operation error", async ({retryAttempts}) => {
+  `("should retry '$retryAttempts' times on operation error", async ({ retryAttempts }) => {
     configureApi({
       ...defaultConfig,
       mailchimpRetryAttempts: retryAttempts.toString(),
@@ -135,13 +136,13 @@ describe("memberEventsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(retryAttempts+1);
+    expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledTimes(retryAttempts + 1);
     expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
       "mailchimpAudienceId",
       "55502f40dc8b7c769880b10874abc9d0",
       {
         name: "my string event",
-      }
+      },
     );
   }, 10000);
 
@@ -182,7 +183,7 @@ describe("memberEventsHandler", () => {
       "55502f40dc8b7c769880b10874abc9d0",
       {
         name: "my string event",
-      }
+      },
     );
   });
 
@@ -223,7 +224,7 @@ describe("memberEventsHandler", () => {
       "55502f40dc8b7c769880b10874abc9d0",
       {
         name: "my string event",
-      }
+      },
     );
   });
 
@@ -265,14 +266,14 @@ describe("memberEventsHandler", () => {
       "55502f40dc8b7c769880b10874abc9d0",
       {
         name: "my string event 1",
-      }
+      },
     );
     expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
       "mailchimpAudienceId",
       "55502f40dc8b7c769880b10874abc9d0",
       {
         name: "my string event 2",
-      }
+      },
     );
   });
 
@@ -314,14 +315,14 @@ describe("memberEventsHandler", () => {
       "55502f40dc8b7c769880b10874abc9d0",
       {
         name: "my string event 1",
-      }
+      },
     );
     expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
       "mailchimpAudienceId",
       "55502f40dc8b7c769880b10874abc9d0",
       {
         name: "my string event 2",
-      }
+      },
     );
   });
 
@@ -364,7 +365,7 @@ describe("memberEventsHandler", () => {
       "55502f40dc8b7c769880b10874abc9d0",
       {
         name: "my string event 3",
-      }
+      },
     );
   });
 
@@ -408,14 +409,14 @@ describe("memberEventsHandler", () => {
       "55502f40dc8b7c769880b10874abc9d0",
       {
         name: "my string event 3",
-      }
+      },
     );
     expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
       "mailchimpAudienceId",
       "55502f40dc8b7c769880b10874abc9d0",
       {
         name: "my string event 4",
-      }
+      },
     );
   });
 
@@ -471,21 +472,21 @@ describe("memberEventsHandler", () => {
       "55502f40dc8b7c769880b10874abc9d0",
       {
         name: "my string event 5",
-      }
+      },
     );
     expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
       "mailchimpAudienceId",
       "55502f40dc8b7c769880b10874abc9d0",
       {
         name: "my string event 6",
-      }
+      },
     );
     expect(mailchimp.lists.createListMemberEvent).toHaveBeenCalledWith(
       "mailchimpAudienceId",
       "55502f40dc8b7c769880b10874abc9d0",
       {
         name: "my string event 7",
-      }
+      },
     );
   });
 });

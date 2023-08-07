@@ -21,5 +21,5 @@ const errorWithStatus = (status) => {
 
 module.exports = {
   defaultConfig,
-  errorWithStatus
+  errorWithStatus,
 };

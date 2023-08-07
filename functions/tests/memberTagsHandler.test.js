@@ -3,6 +3,7 @@ jest.mock("@mailchimp/mailchimp_marketing");
 const functions = require("firebase-functions-test");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
 const { errorWithStatus, defaultConfig } = require("./utils");
+
 const testEnv = functions();
 
 // configure config mocks (so we can inject config and try different scenarios)
@@ -11,13 +12,13 @@ jest.doMock("../config", () => defaultConfig);
 const api = require("../index");
 
 describe("memberTagsHandler", () => {
-  let configureApi = (config) => {
+  const configureApi = (config) => {
     api.processConfig(config);
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mailchimp.lists.updateListMemberTags = jest.fn()
+    mailchimp.lists.updateListMemberTags = jest.fn();
   });
 
   afterAll(() => {
@@ -39,7 +40,7 @@ describe("memberTagsHandler", () => {
       },
     });
 
-    expect(result).toBe(null);
+    expect(result).toBe(undefined);
     expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(0);
   });
 
@@ -65,7 +66,7 @@ describe("memberTagsHandler", () => {
       },
     });
 
-    expect(result).toBe(null);
+    expect(result).toBe(undefined);
     expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(0);
   });
 
@@ -92,7 +93,7 @@ describe("memberTagsHandler", () => {
       },
     });
 
-    expect(result).toBe(null);
+    expect(result).toBe(undefined);
     expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(0);
   });
 
@@ -156,7 +157,7 @@ describe("memberTagsHandler", () => {
           { name: "tagValue1", status: "active" },
           { name: "tagValue2", status: "active" },
         ],
-      }
+      },
     );
   });
 
@@ -164,7 +165,7 @@ describe("memberTagsHandler", () => {
   retryAttempts
   ${0}
   ${2}
-  `("should retry '$retryAttempts' times on operation error", async ({retryAttempts}) => {
+  `("should retry '$retryAttempts' times on operation error", async ({ retryAttempts }) => {
     configureApi({
       ...defaultConfig,
       mailchimpRetryAttempts: retryAttempts.toString(),
@@ -194,7 +195,7 @@ describe("memberTagsHandler", () => {
     });
 
     expect(result).toBe(undefined);
-    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(retryAttempts+1);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(retryAttempts + 1);
     expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledWith(
       "mailchimpAudienceId",
       "55502f40dc8b7c769880b10874abc9d0",
@@ -203,7 +204,7 @@ describe("memberTagsHandler", () => {
           { name: "tagValue1", status: "active" },
           { name: "tagValue2", status: "active" },
         ],
-      }
+      },
     );
   }, 10000);
 
@@ -243,7 +244,7 @@ describe("memberTagsHandler", () => {
           { name: "tagValue1", status: "active" },
           { name: "tagValue2", status: "active" },
         ],
-      }
+      },
     );
   });
 
@@ -283,7 +284,7 @@ describe("memberTagsHandler", () => {
           { name: "tagValue1", status: "active" },
           { name: "tagValue2", status: "active" },
         ],
-      }
+      },
     );
   });
 
@@ -332,7 +333,7 @@ describe("memberTagsHandler", () => {
           { name: "value_2", status: "active" },
           { name: "value_3", status: "active" },
         ],
-      }
+      },
     );
   });
 
@@ -383,7 +384,7 @@ describe("memberTagsHandler", () => {
           { name: "tagValue3", status: "active" },
           { name: "tagValue4", status: "active" },
         ],
-      }
+      },
     );
   });
 
@@ -434,7 +435,7 @@ describe("memberTagsHandler", () => {
           { name: "tagValue3", status: "active" },
           { name: "tagValue4", status: "active" },
         ],
-      }
+      },
     );
   });
 
@@ -481,7 +482,7 @@ describe("memberTagsHandler", () => {
           { name: "data_3", status: "active" },
           { name: "data_4", status: "active" },
         ],
-      }
+      },
     );
   });
 });
