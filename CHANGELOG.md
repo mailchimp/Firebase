@@ -1,3 +1,10 @@
+## Version 0.5.4
+
+- Switch from mailchimp-api-v3 package to @mailchimp/mailchimp_marketing (PR #66)
+- Add a configurable retry to allow a higher chance of requests causing transient failures to succeed (#69)
+- Added linter config and updated packages. (#70)
+- Node.JS 18 runtime for functions
+
 ## Version 0.5.3
 
 - Addressed [breaking change in Google Cloud Functions](https://cloud.google.com/functions/docs/release-notes#April_11_2023) where the build command would run on function deployment (PR #65).
