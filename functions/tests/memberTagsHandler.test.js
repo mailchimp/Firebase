@@ -2,7 +2,7 @@ jest.mock("@mailchimp/mailchimp_marketing");
 
 const functions = require("firebase-functions-test");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
-const { defaultConfig } = require("./utils");
+const { errorWithStatus, defaultConfig } = require("./utils");
 
 const testEnv = functions();
 
@@ -18,6 +18,7 @@ describe("memberTagsHandler", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mailchimp.lists.updateListMemberTags = jest.fn();
   });
 
   afterAll(() => {
@@ -159,6 +160,53 @@ describe("memberTagsHandler", () => {
       },
     );
   });
+
+  it.each`
+  retryAttempts
+  ${0}
+  ${2}
+  `("should retry '$retryAttempts' times on operation error", async ({ retryAttempts }) => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpRetryAttempts: retryAttempts.toString(),
+      mailchimpMemberTags: JSON.stringify({
+        memberTags: ["tag_data_1", "tag_data_2"],
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.memberTagsHandler);
+
+    mailchimp.lists.updateListMemberTags.mockImplementation(() => {
+      throw errorWithStatus(404);
+    });
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+      emailAddress: "test@example.com",
+      tag_data_1: "tagValue1",
+      tag_data_2: "tagValue2",
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledTimes(retryAttempts + 1);
+    expect(mailchimp.lists.updateListMemberTags).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        tags: [
+          { name: "tagValue1", status: "active" },
+          { name: "tagValue2", status: "active" },
+        ],
+      },
+    );
+  }, 10000);
 
   it("should set tags for new user with nested subscriber email", async () => {
     configureApi({

@@ -18,6 +18,7 @@ describe("addUserToList", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mailchimp.lists.addListMember = jest.fn();
   });
 
   afterAll(() => {

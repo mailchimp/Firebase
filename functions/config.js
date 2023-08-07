@@ -9,4 +9,5 @@ module.exports = {
   mailchimpMergeField: process.env.MAILCHIMP_MERGE_FIELDS_CONFIG,
   mailchimpMemberEventsWatchPath: process.env.MAILCHIMP_MEMBER_EVENTS_WATCH_PATH,
   mailchimpMemberEvents: process.env.MAILCHIMP_MEMBER_EVENTS_CONFIG,
+  mailchimpRetryAttempts: process.env.MAILCHIMP_RETRY_ATTEMPTS,
 };
