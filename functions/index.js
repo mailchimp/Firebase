@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const _ = require("lodash");
-const { auth, firestore, logger } = require("firebase-functions/v1");
+const { auth, firestore, logger } = require("firebase-functions");
 const admin = require("firebase-admin");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
 const jmespath = require("jmespath");
