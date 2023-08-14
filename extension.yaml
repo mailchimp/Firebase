@@ -13,12 +13,11 @@
 # limitations under the License.
 
 name: mailchimp-firebase-sync
-version: 0.5.3
+version: 0.5.4
 specVersion: v1beta
 
 displayName: Manage Marketing with Mailchimp
-description:
-  Syncs user data with a Mailchimp audience for sending personalized email marketing campaigns.
+description: Syncs user data with a Mailchimp audience for sending personalized email marketing campaigns.
 
 license: Apache-2.0
 
@@ -59,7 +58,7 @@ resources:
       then automatically adds the new user to your specified MailChimp audience.
     properties:
       location: ${LOCATION}
-      runtime: nodejs16
+      runtime: nodejs18
       eventTrigger:
         eventType: providers/firebase.auth/eventTypes/user.create
         resource: projects/${PROJECT_ID}
@@ -72,7 +71,7 @@ resources:
       MailChimp audience.
     properties:
       location: ${LOCATION}
-      runtime: nodejs16
+      runtime: nodejs18
       eventTrigger:
         eventType: providers/firebase.auth/eventTypes/user.delete
         resource: projects/${PROJECT_ID}
@@ -81,11 +80,11 @@ resources:
     type: firebaseextensions.v1beta.function
     description:
       Member Tags provide the ability to associate "metadata" or "labels" with a Mailchimp subscriber.
-      The memberTagsHandler function listens for Firestore write events based on specified config path, 
+      The memberTagsHandler function listens for Firestore write events based on specified config path,
       then automatically classifies the document data as Mailchimp subscriber tags.
     properties:
       location: ${LOCATION}
-      runtime: nodejs16
+      runtime: nodejs18
       eventTrigger:
         eventType: providers/cloud.firestore/eventTypes/document.write
         resource: projects/${param:PROJECT_ID}/databases/(default)/documents/${param:MAILCHIMP_MEMBER_TAGS_WATCH_PATH}/{documentId}
@@ -94,11 +93,11 @@ resources:
     type: firebaseextensions.v1beta.function
     description:
       Merge fields provide the ability to create new properties that can be associated with Mailchimp subscriber.
-      The mergeFieldsHandler function listens for Firestore write events based on specified config path, 
+      The mergeFieldsHandler function listens for Firestore write events based on specified config path,
       then automatically populates the Mailchimp subscriber's respective merge fields.
     properties:
       location: ${LOCATION}
-      runtime: nodejs16
+      runtime: nodejs18
       eventTrigger:
         eventType: providers/cloud.firestore/eventTypes/document.write
         resource: projects/${param:PROJECT_ID}/databases/(default)/documents/${param:MAILCHIMP_MERGE_FIELDS_WATCH_PATH}/{documentId}
@@ -107,12 +106,12 @@ resources:
     type: firebaseextensions.v1beta.function
     description:
       Member events are Mailchimp specific activity events that can be created and associated with a predefined action.
-      The memberEventsHandler function Listens for Firestore write events based on specified config path, 
-      then automatically uses the document data to create a Mailchimp event on the subscriber's profile 
+      The memberEventsHandler function Listens for Firestore write events based on specified config path,
+      then automatically uses the document data to create a Mailchimp event on the subscriber's profile
       which can subsequently trigger automation workflows.
     properties:
       location: ${LOCATION}
-      runtime: nodejs16
+      runtime: nodejs18
       eventTrigger:
         eventType: providers/cloud.firestore/eventTypes/document.write
         resource: projects/${param:PROJECT_ID}/databases/(default)/documents/${param:MAILCHIMP_MEMBER_EVENTS_WATCH_PATH}/{documentId}
@@ -305,9 +304,8 @@ params:
 
       NOTE: To disable this cloud function listener, provide an empty JSON config `{}`.
 
-
     required: true
-    default: '{}'
+    default: "{}"
 
   - param: MAILCHIMP_MERGE_FIELDS_WATCH_PATH
     label: Firebase Merge Fields Watch Path
@@ -315,7 +313,7 @@ params:
     type: string
     example: registrations
     default: _unused_
-    required: true    
+    required: true
 
   - param: MAILCHIMP_MERGE_FIELDS_CONFIG
     type: string
@@ -335,7 +333,7 @@ params:
       2) `statusField` - An optional configuration setting for syncing the users mailchimp status. Properties are:
 
       - `documentPath` - (required) The path to the field in the document containing the users status, as a string. The format can be any valid [JMES Path query](https://jmespath.org/). e.g. "status", "meta.status".
-      
+
       - `statusFormat` - (optional) Indicates the format that the status field is. The options are:
           - `"string"` - The default, this will sync the value from the status field as is, with no modification.
           - `"boolean"` - This will check if the value is truthy (e.g. true, 1, "subscribed"), and if so will resolve the status to "subscribed", otherwise it will resolve to "unsubscribed".
@@ -418,9 +416,8 @@ params:
 
       NOTE: To disable this cloud function listener, provide an empty JSON config `{}`.
 
-
     required: true
-    default: '{}'
+    default: "{}"
 
   - param: MAILCHIMP_MEMBER_EVENTS_WATCH_PATH
     label: Firebase Member Events Watch Path
@@ -513,6 +510,5 @@ params:
 
       NOTE: To disable this cloud function listener, provide an empty JSON config `{}`.
 
-
     required: true
-    default: '{}'
+    default: "{}"
