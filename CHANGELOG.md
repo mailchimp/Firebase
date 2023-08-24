@@ -5,6 +5,7 @@
 - Added linter config and updated packages. (PR #70)
 - Node.JS 18 runtime for functions (PR #73)
 - GitHub Actions Support to assist with verification and publishing (PR #77)
+- Allow type conversion for timestamp and numeric types in merge fields. Additionally, support complex values in merge fields by facilitating path-style merge field names (PR #75).
 
 ## Version 0.5.3
 
