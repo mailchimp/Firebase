@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const assert = require("assert");
 const _ = require("lodash");
 const { auth, firestore, logger } = require("firebase-functions");
 const admin = require("firebase-admin");
@@ -136,6 +137,18 @@ async function wait(attempt) {
   const time = Math.min(random * minTimeout * factor ** attempt, maxTimeout);
   // eslint-disable-next-line no-promise-executor-return
   return new Promise((resolve) => setTimeout(resolve, time));
+}
+
+/**
+ * Converts a Firestore Timestamp type to YYYY-MM-DD format
+ * @param {import('firebase-admin').firestore.Timestamp} timestamp
+ * @returns {string} The date in string format.
+ */
+function convertTimestampToMailchimpDate(timestamp) {
+  assert(timestamp instanceof admin.firestore.Timestamp, `Value ${timestamp} is not a Timestamp`);
+  const timestampDate = timestamp.toDate();
+  const padNumber = (number) => _.padStart(number, 2, "0");
+  return `${timestampDate.getUTCFullYear()}-${padNumber(timestampDate.getUTCMonth() + 1)}-${padNumber(timestampDate.getUTCDate())}`;
 }
 
 /**
@@ -363,7 +376,20 @@ exports.mergeFieldsHandler = firestore.document(config.mailchimpMergeFieldWatchP
 
           // if delta exists or the field should always be sent, then update accumulator collection
           if (prevMergeFieldValue !== newMergeFieldValue || (_.isObject(mergeFieldConfig) && mergeFieldConfig.when && mergeFieldConfig.when === "always")) {
-            acc[mergeFieldName] = newMergeFieldValue;
+            const conversionToApply = _.isObject(mergeFieldConfig) && mergeFieldConfig.typeConversion ? mergeFieldConfig.typeConversion : "none";
+            let finalValue = newMergeFieldValue;
+            switch (conversionToApply) {
+              case "timestampToDate":
+                finalValue = convertTimestampToMailchimpDate(newMergeFieldValue);
+                break;
+              case "stringToNumber":
+                finalValue = Number(newMergeFieldValue);
+                assert(!isNaN(finalValue), `${newMergeFieldValue} could not be converted to a number.`);
+                break;
+              default:
+                break;
+            }
+            _.set(acc, mergeFieldName, finalValue);
           }
           return acc;
         }, {});

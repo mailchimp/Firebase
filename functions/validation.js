@@ -52,6 +52,7 @@ const mergeFieldsExtendedConfigSchema = {
   type: "object",
   properties: {
     mailchimpFieldName: { type: "string" },
+    typeConversion: { type: "string", enum: ["none", "timestampToDate", "stringToNumber"] },
     when: { type: "string", enum: ["changed", "always"] },
   },
   required: ["mailchimpFieldName"],
