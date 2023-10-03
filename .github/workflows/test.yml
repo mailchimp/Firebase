@@ -44,4 +44,4 @@ jobs:
       - name: npm install
         run: cd functions && npm i
       - name: npm test
-        run: npm run test:ci
+        run: cd functions && npm run test

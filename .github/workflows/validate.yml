@@ -13,6 +13,8 @@
 # limitations under the License.
 
 # Copied from https://github.com/firebase/extensions/blob/next/.github/workflows/validate.yml
+# 1. Changed node versions list to only 18.
+# 2. Updated paths to use functions directory.
 
 name: Validate
 
@@ -29,8 +31,10 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v3
         with:
-          node-version: 14
+          node-version: 18
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
       - name: npm install
-        run: SKIP_POSTINSTALL=yes npm i
+        run: cd functions && npm i
       - name: Prettier Lint Check
-        run: npm run lint
+        run: cd functions && npm run lint
