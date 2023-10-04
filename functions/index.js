@@ -467,7 +467,7 @@ exports.memberEventsHandler = firestore.document(config.mailchimpMemberEventsWat
         getSubscriberEmail(prevDoc, newDoc, eventsConfig.subscriberEmail),
       );
 
-      // Invoke mailchimp API with updated tags
+      // Invoke mailchimp API with new events
       if (memberEvents && memberEvents.length) {
         const requests = memberEvents.reduce((acc, name) => {
           acc.push(
