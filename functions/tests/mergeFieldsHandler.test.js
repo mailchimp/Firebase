@@ -1,6 +1,7 @@
 jest.mock("@mailchimp/mailchimp_marketing");
 
 const functions = require("firebase-functions-test");
+const admin = require("firebase-admin");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
 const { errorWithStatus, defaultConfig } = require("./utils");
 
@@ -1055,5 +1056,251 @@ describe("mergeFieldsHandler", () => {
         status_if_new: "mailchimpContactStatus",
       },
     );
+  });
+
+  it("should set address data for user when using nested field names", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+          phoneNumber: "PHONE",
+          addressLine1: "ADDRESS.addr1",
+          addressLine2: "ADDRESS.addr2",
+          addressCity: "ADDRESS.city",
+          addressState: "ADDRESS.state",
+          addressZip: "ADDRESS.zip",
+          addressCountry: "ADDRESS.country",
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "first name",
+      lastName: "last name",
+      phoneNumber: "phone number",
+      emailAddress: "test@example.com",
+      addressLine1: "Line 1",
+      addressLine2: "Line 2",
+      addressCity: "City",
+      addressState: "State",
+      addressZip: "Zip",
+      addressCountry: "Country",
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimp.lists.setListMember).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.setListMember).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        email_address: "test@example.com",
+        merge_fields: {
+          FNAME: "first name",
+          LNAME: "last name",
+          PHONE: "phone number",
+          ADDRESS: {
+            addr1: "Line 1",
+            addr2: "Line 2",
+            city: "City",
+            country: "Country",
+            state: "State",
+            zip: "Zip",
+          },
+        },
+        status_if_new: "mailchimpContactStatus",
+      },
+    );
+  });
+
+  it("should convert timestamp to date", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+          phoneNumber: "PHONE",
+          createdDate: {
+            mailchimpFieldName: "CREATED_AT",
+            typeConversion: "timestampToDate",
+          },
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "first name",
+      lastName: "last name",
+      phoneNumber: "phone number",
+      emailAddress: "test@example.com",
+      createdDate: new admin.firestore.Timestamp(1692572400, 233000000),
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimp.lists.setListMember).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.setListMember).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        email_address: "test@example.com",
+        merge_fields: {
+          FNAME: "first name",
+          LNAME: "last name",
+          PHONE: "phone number",
+          CREATED_AT: "2023-08-20",
+        },
+        status_if_new: "mailchimpContactStatus",
+      },
+    );
+  });
+
+  it("should fail timestamp conversion if type is incorrect", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+          phoneNumber: "PHONE",
+          createdDate: {
+            mailchimpFieldName: "CREATED_AT",
+            typeConversion: "timestampToDate",
+          },
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "first name",
+      lastName: "last name",
+      phoneNumber: "phone number",
+      emailAddress: "test@example.com",
+      createdDate: "1692572400",
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimp.lists.setListMember).not.toHaveBeenCalled();
+  });
+
+  it("should convert number string to number", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+          phoneNumber: "PHONE",
+          eventCount: {
+            mailchimpFieldName: "EVENT_COUNT",
+            typeConversion: "stringToNumber",
+          },
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "first name",
+      lastName: "last name",
+      phoneNumber: "phone number",
+      emailAddress: "test@example.com",
+      eventCount: "3.45",
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimp.lists.setListMember).toHaveBeenCalledTimes(1);
+    expect(mailchimp.lists.setListMember).toHaveBeenCalledWith(
+      "mailchimpAudienceId",
+      "55502f40dc8b7c769880b10874abc9d0",
+      {
+        email_address: "test@example.com",
+        merge_fields: {
+          FNAME: "first name",
+          LNAME: "last name",
+          PHONE: "phone number",
+          EVENT_COUNT: 3.45,
+        },
+        status_if_new: "mailchimpContactStatus",
+      },
+    );
+  });
+
+  it("should fail string to number conversion", async () => {
+    configureApi({
+      ...defaultConfig,
+      mailchimpMergeField: JSON.stringify({
+        mergeFields: {
+          firstName: "FNAME",
+          lastName: "LNAME",
+          phoneNumber: "PHONE",
+          eventCount: {
+            mailchimpFieldName: "EVENT_COUNT",
+            typeConversion: "stringToNumber",
+          },
+        },
+        subscriberEmail: "emailAddress",
+      }),
+    });
+    const wrapped = testEnv.wrap(api.mergeFieldsHandler);
+
+    const testUser = {
+      uid: "122",
+      displayName: "lee",
+      firstName: "first name",
+      lastName: "last name",
+      phoneNumber: "phone number",
+      emailAddress: "test@example.com",
+      eventCount: "test",
+    };
+
+    const result = await wrapped({
+      after: {
+        data: () => testUser,
+      },
+    });
+
+    expect(result).toBe(undefined);
+    expect(mailchimp.lists.setListMember).not.toHaveBeenCalled();
   });
 });
