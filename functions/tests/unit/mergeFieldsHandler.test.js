@@ -8,8 +8,8 @@ const { errorWithStatus, defaultConfig } = require("./utils");
 const testEnv = functions();
 
 // configure config mocks (so we can inject config and try different scenarios)
-jest.doMock("../config", () => defaultConfig);
-const api = require("../index");
+jest.doMock("../../config", () => defaultConfig);
+const api = require("../../index");
 
 describe("mergeFieldsHandler", () => {
   const configureApi = (config) => {
