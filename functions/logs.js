@@ -21,15 +21,15 @@ module.exports = {
   complete: () => {
     logger.log("Completed execution of extension");
   },
-  userAlreadyInAudience: () => {
-    logger.log("Attempted added user already in mailchimp audience");
+  userAlreadyInAudience: (userId, audienceId) => {
+    logger.log(`Attempted added user already in mailchimp audience (userId: ${userId}, audienceId: ${audienceId})`);
   },
   errorAddUser: (err) => {
     logger.error("Error when adding user to Mailchimp audience", err);
   },
   userNotInAudience: () => {
     logger.log(
-      "Attempted removal failed, member deletion not allowed. Probably because member has already been removed from audience"
+      "Attempted removal failed, member deletion not allowed. Probably because member has already been removed from audience",
     );
   },
   errorRemoveUser: (err) => {
@@ -43,7 +43,7 @@ module.exports = {
   },
   mailchimpNotInitialized: () => {
     logger.error(
-      "Mailchimp was not initialized correctly, check for errors in the logs"
+      "Mailchimp was not initialized correctly, check for errors in the logs",
     );
   },
   start: () => {
@@ -51,7 +51,7 @@ module.exports = {
   },
   userAdded: (userId, audienceId, mailchimpId, status) => {
     logger.log(
-      `Added user: ${userId} with status '${status}' to Mailchimp audience: ${audienceId} with Mailchimp ID: ${mailchimpId}`
+      `Added user: ${userId} with status '${status}' to Mailchimp audience: ${audienceId} with Mailchimp ID: ${mailchimpId}`,
     );
   },
   userAdding: (userId, audienceId) => {
@@ -62,17 +62,31 @@ module.exports = {
   },
   userRemoved: (userId, hashedEmail, audienceId) => {
     logger.log(
-      `Removed user: ${userId} with hashed email: ${hashedEmail} from Mailchimp audience: ${audienceId}`
+      `Removed user: ${userId} with hashed email: ${hashedEmail} from Mailchimp audience: ${audienceId}`,
     );
   },
   userRemoving: (userId, hashedEmail, audienceId) => {
     logger.log(
-      `Removing user: ${userId} with hashed email: ${hashedEmail} from Mailchimp audience: ${audienceId}`
+      `Removing user: ${userId} with hashed email: ${hashedEmail} from Mailchimp audience: ${audienceId}`,
     );
   },
   backfillComplete: (successCount, errorCount) => {
     logger.log(
-      `Finished adding existing users to Mailchimp audience. ${successCount} users added, ${errorCount} errors.`
+      `Finished adding existing users to Mailchimp audience. ${successCount} users added, ${errorCount} errors.`,
     );
+  },
+  attemptFailed: (attempt, retries) => {
+    if (attempt >= retries) {
+      let content = `Attempt ${attempt} failed. Max retries (${retries}) reached, failing operation.`;
+      if (retries === 0) {
+        content += ` If this looks to be a transient error, please set the MAILCHIMP_RETRY_ATTEMPTS configuration value to non-zero value.`;
+      }
+      logger.warn(content);
+    } else {
+      logger.warn(`Attempt ${attempt} failed. Waiting to attempt retry of operation. Max retries: ${retries}.`);
+    }
+  },
+  subsequentAttemptRecovered: (attempt) => {
+    logger.info(`Attempt ${attempt} succeeded, operation recovered.`);
   },
 };

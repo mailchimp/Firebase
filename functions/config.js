@@ -10,4 +10,5 @@ module.exports = {
   mailchimpMemberEventsWatchPath: process.env.MAILCHIMP_MEMBER_EVENTS_WATCH_PATH,
   mailchimpMemberEvents: process.env.MAILCHIMP_MEMBER_EVENTS_CONFIG,
   performBackfillFromAuth: process.env.PERFORM_BACKFILL_FROM_AUTH === "true",
+  mailchimpRetryAttempts: process.env.MAILCHIMP_RETRY_ATTEMPTS,
 };

@@ -1,4 +1,5 @@
-const Validator = require("jsonschema").Validator;
+const { Validator } = require("jsonschema");
+
 const v = new Validator();
 
 const multidimensionalSelectorSchema = {
@@ -51,6 +52,7 @@ const mergeFieldsExtendedConfigSchema = {
   type: "object",
   properties: {
     mailchimpFieldName: { type: "string" },
+    typeConversion: { type: "string", enum: ["none", "timestampToDate", "stringToNumber"] },
     when: { type: "string", enum: ["changed", "always"] },
   },
   required: ["mailchimpFieldName"],
@@ -84,13 +86,13 @@ const mergeFieldsConfigSchema = {
 
 v.addSchema(
   mergeFieldsExtendedConfigSchema,
-  mergeFieldsExtendedConfigSchema.id
+  mergeFieldsExtendedConfigSchema.id,
 );
 v.addSchema(multidimensionalSelectorSchema, multidimensionalSelectorSchema.id);
 
-exports.validateTagConfig = (tagConfig) =>
-  v.validate(tagConfig, tagConfigSchema);
-exports.validateEventsConfig = (eventsConfig) =>
-  v.validate(eventsConfig, eventsConfigSchema);
-exports.validateMergeFieldsConfig = (mergeFieldsConfig) =>
-  v.validate(mergeFieldsConfig, mergeFieldsConfigSchema);
+exports.validateTagConfig = (tagConfig) => v.validate(tagConfig, tagConfigSchema);
+exports.validateEventsConfig = (eventsConfig) => v.validate(eventsConfig, eventsConfigSchema);
+exports.validateMergeFieldsConfig = (mergeFieldsConfig) => v.validate(
+  mergeFieldsConfig,
+  mergeFieldsConfigSchema,
+);

@@ -1,35 +1,39 @@
-const crypto = require('crypto');
-const _ = require('lodash');
-const functions = require('firebase-functions');
-const Mailchimp = require('mailchimp-api-v3');
+const crypto = require("crypto");
+const assert = require("assert");
+const _ = require("lodash");
+const {
+  auth, firestore, logger, tasks,
+} = require("firebase-functions");
+const mailchimp = require("@mailchimp/mailchimp_marketing");
+const jmespath = require("jmespath");
+const { initializeApp } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+const { getExtensions } = require("firebase-admin/extensions");
+const { getFunctions } = require("firebase-admin/functions");
 const validation = require("./validation");
-const jmespath = require('jmespath');
 
-const { initializeApp } = require('firebase-admin/app')
-const { getAuth } =  require("firebase-admin/auth");
-const { getExtensions } = require('firebase-admin/extensions');
-const { getFunctions } = require('firebase-admin/functions');
-
-let config = require('./config');
-const logs = require('./logs');
+let config = require("./config");
+const logs = require("./logs");
 
 const CONFIG_PARAMS = Object.freeze({
-  'mailchimpMemberTags': validation.validateTagConfig,
-  'mailchimpMergeField': validation.validateMergeFieldsConfig,
-  'mailchimpMemberEvents': validation.validateEventsConfig
+  mailchimpMemberTags: validation.validateTagConfig,
+  mailchimpMergeField: validation.validateMergeFieldsConfig,
+  mailchimpMemberEvents: validation.validateEventsConfig,
 });
 
 initializeApp();
 logs.init();
 
-const processConfig = (configInput) => {
-// extension.yaml receives serialized JSON inputs representing configuration settings for merge fields, tags, and custom events
-  // the following code deserialized the JSON inputs and builds a configuration object with each custom setting path (tags, merge fields, custom events) at the root.
+function processConfig(configInput) {
+  // extension.yaml receives serialized JSON inputs representing configuration settings
+  //  for merge fields, tags, and custom events. the following code deserialized the JSON
+  //  inputs and builds a configuration object with each custom setting path
+  //  (tags, merge fields, custom events) at the root.
   config = Object.entries(configInput).reduce((acc, [key, value]) => {
-    const logError = message => {
-      functions.logger.log(message, key, value);
+    const logError = (message) => {
+      logger.log(message, key, value);
       return acc;
-    }
+    };
     if (configInput[key] && Object.keys(CONFIG_PARAMS).includes(key)) {
       const parsedConfig = JSON.parse(configInput[key]);
       if (!configInput[`${key}WatchPath`]) {
@@ -38,21 +42,23 @@ const processConfig = (configInput) => {
         // https://firebase.google.com/docs/firestore/extend-with-functions#wildcards-parameters
         return logError(`${key}WatchPath config property is undefined. Please ensure a proper watch path param has been provided.`);
       }
-      if (configInput[`${key}WatchPath`] === 'N/A') {
-        // The Firebase platform requires a watch path to be provided conforming to a regular expression string/string
-        // However, given this Mailchimp extension represents a suite of features, it's possible a user will not utilize all of them
-        // As such, when a watch path of "N/A" is provided as input, it serves as an indicator to skip this feature and treat the function as NO-OP.
+      if (configInput[`${key}WatchPath`] === "N/A") {
+        // The Firebase platform requires a watch path to be provided conforming to a
+        //  regular expression string/string. However, given this Mailchimp extension
+        //  represents a suite of features, it's possible a user will not utilize all of them
+        // As such, when a watch path of "N/A" is provided as input, it serves as an indicator
+        //  to skip this feature and treat the function as NO-OP.
         return logError(`${key}WatchPath property is N/A. Setting ${configInput[key]} cloud function as NO-OP.`);
       }
 
-      if(_.isEmpty(parsedConfig)) {
+      if (_.isEmpty(parsedConfig)) {
         return logError(`${key} configuration not provided.`);
-      } 
+      }
 
       const validator = CONFIG_PARAMS[key];
       const validationResult = validator(parsedConfig);
-      if(!validationResult.valid) {
-        return logError(`${key} syntax is invalid: \n${validationResult.errors.map(e => e.message).join(",\n")}`);
+      if (!validationResult.valid) {
+        return logError(`${key} syntax is invalid: \n${validationResult.errors.map((e) => e.message).join(",\n")}`);
       }
 
       // persist the deserialized JSON
@@ -65,32 +71,138 @@ const processConfig = (configInput) => {
   }, {});
 }
 
-let mailchimp;
 try {
-  // Create a new Mailchimp object instance
-  mailchimp = new Mailchimp(config.mailchimpOAuthToken);
-  processConfig(config)
-  
+  // Configure mailchimp api client
+  // The datacenter id is appended to the API key in the form key-dc;
+  // if your API key is 0123456789abcdef0123456789abcde-us6, then the data center subdomain is us6
+  // See https://mailchimp.com/developer/marketing/guides/quick-start/
+  // See https://github.com/mailchimp/mailchimp-marketing-node/
+  // See https://mailchimp.com/developer/marketing/guides/access-user-data-oauth-2/
+  const apiKey = config.mailchimpOAuthToken;
+
+  const apiKeyParts = apiKey.split("-");
+
+  if (apiKeyParts.length === 2) {
+    const server = apiKeyParts.pop();
+    mailchimp.setConfig({
+      apiKey,
+      server,
+    });
+  } else {
+    throw new Error("Unable to set Mailchimp configuration");
+  }
+
+  processConfig(config);
 } catch (err) {
   logs.initError(err);
 }
 
 /**
+ * MD5 hashes the email address, for use as the mailchimp identifier
  * @param {string} email
+ * @returns {string} The MD5 Hash
  */
-const subscriberHasher = (email) => crypto.createHash("md5").update(email.toLowerCase()).digest("hex");
-
-const getSubscriberEmail = (prevDoc, newDoc, emailPath) => _.get(prevDoc, emailPath, false) || _.get(newDoc, emailPath)
-
-const resolveValueFromDocumentPath = (doc, documentPathOrConfig, defaultValue = undefined) => {
-  const documentSelector = _.isObject(documentPathOrConfig) ? documentPathOrConfig.documentPath : documentPathOrConfig
-  return jmespath.search(doc, documentSelector) ?? defaultValue
-};
+function subscriberHasher(email) { return crypto.createHash("md5").update(email.toLowerCase()).digest("hex"); }
 
 /**
- * @param {UserRecord} user
+ * Extracts the subscriber email from a document, based on a string path.
+ *  Uses lodash's "get" function.
+ * @param {any} prevDoc
+ * @param {any} newDoc
+ * @param {string} emailPath
+ * @returns {string} the subscribers email
  */
-const addUser = async(user) => {
+function getSubscriberEmail(prevDoc, newDoc, emailPath) {
+  return _.get(prevDoc, emailPath, false) || _.get(newDoc, emailPath);
+}
+
+/**
+ * Uses JMESPath to retrieve a value from a document.
+ * @param {any} doc
+ * @param {string | { documentPath: string }} documentPathOrConfig
+ * @param {string} defaultValue
+ * @returns
+ */
+function resolveValueFromDocumentPath(doc, documentPathOrConfig, defaultValue = undefined) {
+  const documentSelector = _.isObject(documentPathOrConfig)
+    ? documentPathOrConfig.documentPath : documentPathOrConfig;
+  return jmespath.search(doc, documentSelector) ?? defaultValue;
+}
+
+/**
+ * Determines a period to wait, based on an exponential backoff function.
+ * @param {number} attempt
+ * @returns {Promise<void>}
+ */
+async function wait(attempt) {
+  const random = Math.random() + 1;
+  const factor = 2;
+  const minTimeout = 500;
+  const maxTimeout = 2000;
+  const time = Math.min(random * minTimeout * factor ** attempt, maxTimeout);
+  // eslint-disable-next-line no-promise-executor-return
+  return new Promise((resolve) => setTimeout(resolve, time));
+}
+
+/**
+ * Converts a Firestore Timestamp type to YYYY-MM-DD format
+ * @param {import('firebase-admin').firestore.Timestamp} timestamp
+ * @returns {string} The date in string format.
+ */
+function convertTimestampToMailchimpDate(timestamp) {
+  assert(timestamp instanceof firestore.Timestamp, `Value ${timestamp} is not a Timestamp`);
+  const timestampDate = timestamp.toDate();
+  const padNumber = (number) => _.padStart(number, 2, "0");
+  return `${timestampDate.getUTCFullYear()}-${padNumber(timestampDate.getUTCMonth() + 1)}-${padNumber(timestampDate.getUTCDate())}`;
+}
+
+/**
+ * Attempts the provided function
+ * @template T
+ * @param {() => Promise<T>} fn The function to try with retries
+ * @param {(err: any) => boolean} errorFilter Return true to retry this error (optional).
+ *  Default is to retry all errors.
+ * @returns {Promise<T>} The response of the function or the first error thrown.
+ */
+async function retry(fn, errorFilter) {
+  let attempt = 0; let
+    firstError = null;
+  const retries = Math.max(0, parseInt(config.mailchimpRetryAttempts || "0", 10));
+  do {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const result = await fn();
+      if (attempt !== 0) {
+        logs.subsequentAttemptRecovered(attempt, retries);
+      }
+      return result;
+    } catch (err) {
+      if (errorFilter && !errorFilter(err)) {
+        throw err;
+      }
+
+      if (!firstError) firstError = err;
+      logs.attemptFailed(attempt, retries);
+      attempt += 1;
+      if (attempt <= retries) {
+        // eslint-disable-next-line no-await-in-loop
+        await wait(attempt);
+      }
+    }
+  } while (attempt <= retries);
+
+  throw firstError;
+}
+
+function errorFilterFor404(err) {
+  return err?.status === 404;
+}
+
+/**
+ * Add Firebase Auth User to Mailchimp
+ * @param {auth.UserRecord} user The user to add.
+ */
+async function addUser(user) {
   const { email, uid } = user;
   if (!email) {
     logs.userNoEmail();
@@ -103,18 +215,18 @@ const addUser = async(user) => {
     {
       email_address: email,
       status: config.mailchimpContactStatus,
-    }
+    },
   );
   logs.userAdded(
     uid,
     config.mailchimpAudienceId,
     results.id,
-    config.mailchimpContactStatus
+    config.mailchimpContactStatus,
   );
   return true;
 }
 
-exports.addUserToList = functions.handler.auth.user.onCreate(
+exports.addUserToList = auth.user().onCreate(
   async (user) => {
     logs.start();
 
@@ -124,16 +236,21 @@ exports.addUserToList = functions.handler.auth.user.onCreate(
     }
 
     try {
-      const userAdded = await addUser(user)
-      if(userAdded) 
-        logs.complete();
+      // this call is not retried, as a 404 here indicates
+      //  the audience ID is incorrect which will not change.
+      const userAdded = await addUser(user);
+      if (userAdded) { logs.complete(); }
     } catch (err) {
-      err.title === 'Member Exists' ? logs.userAlreadyInAudience( ) : logs.errorAddUser(err);
+      if (err.title === "Member Exists") {
+        logs.userAlreadyInAudience(user.uid, config.mailchimpAudienceId);
+      } else {
+        logs.errorAddUser(err);
+      }
     }
-  }
+  },
 );
 
-exports.removeUserFromList = functions.handler.auth.user.onDelete(
+exports.removeUserFromList = auth.user().onDelete(
   async (user) => {
     logs.start();
 
@@ -152,21 +269,26 @@ exports.removeUserFromList = functions.handler.auth.user.onDelete(
       const hashed = subscriberHasher(email);
 
       logs.userRemoving(uid, hashed, config.mailchimpAudienceId);
-      await mailchimp.delete(
-        `/lists/${config.mailchimpAudienceId}/members/${hashed}`
-      );
+      await retry(() => mailchimp.lists.deleteListMember(
+        config.mailchimpAudienceId,
+        hashed,
+      ), errorFilterFor404);
       logs.userRemoved(uid, hashed, config.mailchimpAudienceId);
       logs.complete();
     } catch (err) {
-      err.title === 'Method Not Allowed' ? logs.userNotInAudience() : logs.errorRemoveUser(err);
+      if (err.title === "Method Not Allowed") {
+        logs.userNotInAudience();
+      } else {
+        logs.errorRemoveUser(err);
+      }
     }
-  }
+  },
 );
 
-exports.memberTagsHandler = functions.handler.firestore.document
+exports.memberTagsHandler = firestore.document(config.mailchimpMemberTagsWatchPath)
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
-    if (_.isEmpty(config.mailchimpMemberTags)) return null;
+    if (_.isEmpty(config.mailchimpMemberTags)) return;
 
     try {
       // Get the configuration settings for mailchimp tags as is defined in extension.yml
@@ -178,12 +300,12 @@ exports.memberTagsHandler = functions.handler.firestore.document
         return;
       }
       if (!tagsConfig.memberTags) {
-        functions.logger.log(`A property named 'memberTags' is required`);
-        return null;
+        logger.log(`A property named 'memberTags' is required`);
+        return;
       }
       if (!Array.isArray(tagsConfig.memberTags)) {
-        functions.logger.log('"memberTags" must be an array')
-        return null;
+        logger.log("\"memberTags\" must be an array");
+        return;
       }
 
       // Get snapshot of document before & after write event
@@ -191,15 +313,17 @@ exports.memberTagsHandler = functions.handler.firestore.document
       const newDoc = event && event.after && event.after.data();
 
       // Retrieves subscriber tags before/after write event
-      const getTagsFromEventSnapshot = snapshot => tagsConfig.memberTags.reduce((acc, tagConfig) => {
-        const tags = resolveValueFromDocumentPath(snapshot, tagConfig);
-        if (Array.isArray(tags) && tags && tags.length) {
-          acc = [...acc, ...tags];
-        } else if (tags) {
-          acc = acc.concat(tags);
-        }
-        return acc;
-      }, []);
+      const getTagsFromEventSnapshot = (snapshot) => tagsConfig
+        .memberTags
+        .reduce((acc, tagConfig) => {
+          const tags = resolveValueFromDocumentPath(snapshot, tagConfig);
+          if (Array.isArray(tags) && tags && tags.length) {
+            return [...acc, ...tags];
+          } if (tags) {
+            return acc.concat(tags);
+          }
+          return acc;
+        }, []);
 
       // Determine all the tags prior to write event
       const prevTags = prevDoc ? getTagsFromEventSnapshot(prevDoc) : [];
@@ -207,26 +331,32 @@ exports.memberTagsHandler = functions.handler.firestore.document
       const newTags = newDoc ? getTagsFromEventSnapshot(newDoc) : [];
 
       // Compute the delta between existing/new tags
-      const tagsToRemove = prevTags.filter(tag => !newTags.includes(tag)).map(tag => ({ name: tag, status: 'inactive' }));
-      const tagsToAdd = newTags.filter(tag => !prevTags.includes(tag)).map(tag => ({ name: tag, status: 'active' }));
+      const tagsToRemove = prevTags.filter((tag) => !newTags.includes(tag)).map((tag) => ({ name: tag, status: "inactive" }));
+      const tagsToAdd = newTags.filter((tag) => !prevTags.includes(tag)).map((tag) => ({ name: tag, status: "active" }));
       const tags = [...tagsToRemove, ...tagsToAdd];
 
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = subscriberHasher(getSubscriberEmail(prevDoc, newDoc, tagsConfig.subscriberEmail));
+      const subscriberHash = subscriberHasher(
+        getSubscriberEmail(prevDoc, newDoc, tagsConfig.subscriberEmail),
+      );
 
       // Invoke mailchimp API with updated tags
       if (tags && tags.length) {
-        await mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}/tags`, { tags });
+        await retry(() => mailchimp.lists.updateListMemberTags(
+          config.mailchimpAudienceId,
+          subscriberHash,
+          { tags },
+        ), errorFilterFor404);
       }
     } catch (e) {
-      functions.logger.log(e);
+      logger.log(e);
     }
   });
 
-exports.mergeFieldsHandler = functions.handler.firestore.document
+exports.mergeFieldsHandler = firestore.document(config.mailchimpMergeFieldWatchPath)
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
-    if (_.isEmpty(config.mailchimpMergeField)) return null;
+    if (_.isEmpty(config.mailchimpMergeField)) return;
 
     try {
       // Get the configuration settings for mailchimp merge fields as is defined in extension.yml
@@ -238,12 +368,12 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
         return;
       }
       if (!mergeFieldsConfig.mergeFields || _.isEmpty(mergeFieldsConfig.mergeFields)) {
-        functions.logger.log(`A property named 'mergeFields' is required`);
-        return null;
+        logger.log(`A property named 'mergeFields' is required`);
+        return;
       }
       if (!_.isObject(mergeFieldsConfig.mergeFields)) {
-        functions.logger.log('Merge Fields config must be an object');
-        return null;
+        logger.log("Merge Fields config must be an object");
+        return;
       }
 
       // Get snapshot of document before & after write event
@@ -251,64 +381,85 @@ exports.mergeFieldsHandler = functions.handler.firestore.document
       const newDoc = event && event.after && event.after.data();
 
       // Determine all the merge prior to write event
-      const mergeFieldsToUpdate = Object.entries(mergeFieldsConfig.mergeFields).reduce((acc, [documentPath, mergeFieldConfig]) => {
-        const mergeFieldName = _.isObject(mergeFieldConfig) ? mergeFieldConfig.mailchimpFieldName : mergeFieldConfig;
-        
-        const prevMergeFieldValue = jmespath.search(prevDoc, documentPath);
-        // lookup the same field value in new snapshot
-        const newMergeFieldValue = jmespath.search(newDoc, documentPath) ?? "";
+      const mergeFieldsToUpdate = Object.entries(mergeFieldsConfig.mergeFields)
+        .reduce((acc, [documentPath, mergeFieldConfig]) => {
+          const mergeFieldName = _.isObject(mergeFieldConfig)
+            ? mergeFieldConfig.mailchimpFieldName : mergeFieldConfig;
 
-        // if delta exists or the field should always be sent, then update accumulator collection
-        if (prevMergeFieldValue !== newMergeFieldValue || (_.isObject(mergeFieldConfig) && mergeFieldConfig.when && mergeFieldConfig.when === "always")) {
-          acc[mergeFieldName] = newMergeFieldValue;
-        }
-        return acc;
-      }, {});
+          const prevMergeFieldValue = jmespath.search(prevDoc, documentPath);
+          // lookup the same field value in new snapshot
+          const newMergeFieldValue = jmespath.search(newDoc, documentPath) ?? "";
+
+          // if delta exists or the field should always be sent, then update accumulator collection
+          if (prevMergeFieldValue !== newMergeFieldValue || (_.isObject(mergeFieldConfig) && mergeFieldConfig.when && mergeFieldConfig.when === "always")) {
+            const conversionToApply = _.isObject(mergeFieldConfig) && mergeFieldConfig.typeConversion ? mergeFieldConfig.typeConversion : "none";
+            let finalValue = newMergeFieldValue;
+            switch (conversionToApply) {
+              case "timestampToDate":
+                finalValue = convertTimestampToMailchimpDate(newMergeFieldValue);
+                break;
+              case "stringToNumber":
+                finalValue = Number(newMergeFieldValue);
+                assert(!isNaN(finalValue), `${newMergeFieldValue} could not be converted to a number.`);
+                break;
+              default:
+                break;
+            }
+            _.set(acc, mergeFieldName, finalValue);
+          }
+          return acc;
+        }, {});
 
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = subscriberHasher(getSubscriberEmail(prevDoc, newDoc, mergeFieldsConfig.subscriberEmail));
+      const subscriberHash = subscriberHasher(
+        getSubscriberEmail(prevDoc, newDoc, mergeFieldsConfig.subscriberEmail),
+      );
 
       const params = {
         status_if_new: config.mailchimpContactStatus,
         email_address: _.get(newDoc, mergeFieldsConfig.subscriberEmail),
       };
 
-      if(!_.isEmpty(mergeFieldsToUpdate)) {
-        params.merge_fields = mergeFieldsToUpdate
+      if (!_.isEmpty(mergeFieldsToUpdate)) {
+        params.merge_fields = mergeFieldsToUpdate;
       }
 
       // sync status if opted in
-      if(_.isObject(mergeFieldsConfig.statusField)) {
-        const { documentPath, statusFormat } = mergeFieldsConfig.statusField
-        let prevStatusValue = jmespath.search(prevDoc, documentPath) ?? '';
+      if (_.isObject(mergeFieldsConfig.statusField)) {
+        const { documentPath, statusFormat } = mergeFieldsConfig.statusField;
+        let prevStatusValue = jmespath.search(prevDoc, documentPath) ?? "";
         // lookup the same field value in new snapshot
-        let newStatusValue = jmespath.search(newDoc, documentPath) ?? '';
+        let newStatusValue = jmespath.search(newDoc, documentPath) ?? "";
 
-        if(statusFormat && statusFormat === "boolean"
+        if (statusFormat && statusFormat === "boolean"
         ) {
-          prevStatusValue = prevStatusValue ? "subscribed" : "unsubscribed"
-          newStatusValue = newStatusValue ? "subscribed" : "unsubscribed"
+          prevStatusValue = prevStatusValue ? "subscribed" : "unsubscribed";
+          newStatusValue = newStatusValue ? "subscribed" : "unsubscribed";
         }
 
         if (prevStatusValue !== newStatusValue) {
-          params.status = newStatusValue
-          params.status_if_new = newStatusValue
+          params.status = newStatusValue;
+          params.status_if_new = newStatusValue;
         }
       }
 
       // Invoke mailchimp API with updated data
       if (params.merge_fields || params.status) {
-        await mailchimp.put(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}`, params);
+        await retry(() => mailchimp.lists.setListMember(
+          config.mailchimpAudienceId,
+          subscriberHash,
+          params,
+        ), errorFilterFor404);
       }
     } catch (e) {
-      functions.logger.log(e);
+      logger.log(e);
     }
   });
 
-exports.memberEventsHandler = functions.handler.firestore.document
+exports.memberEventsHandler = firestore.document(config.mailchimpMemberEventsWatchPath)
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
-    if (_.isEmpty(config.mailchimpMemberEvents)) return null;
+    if (_.isEmpty(config.mailchimpMemberEvents)) return;
 
     try {
       // Get the configuration settings for mailchimp custom events as is defined in extension.yml
@@ -320,12 +471,12 @@ exports.memberEventsHandler = functions.handler.firestore.document
         return;
       }
       if (!eventsConfig.memberEvents) {
-        functions.logger.log(`A property named 'memberEvents' is required`);
-        return null;
+        logger.log(`A property named 'memberEvents' is required`);
+        return;
       }
       if (!Array.isArray(eventsConfig.memberEvents)) {
-        functions.logger.log(`'memberEvents' property must be an array`);
-        return null;
+        logger.log(`'memberEvents' property must be an array`);
+        return;
       }
 
       // Get snapshot of document before & after write event
@@ -333,80 +484,90 @@ exports.memberEventsHandler = functions.handler.firestore.document
       const newDoc = event && event.after && event.after.data();
 
       // Retrieves subscriber tags before/after write event
-      const getMemberEventsFromSnapshot = snapshot => eventsConfig.memberEvents.reduce((acc, memberEventConfiguration) => {
-        const events = resolveValueFromDocumentPath(snapshot, memberEventConfiguration);
-        if (Array.isArray(events) && events && events.length) {
-          acc = [...acc, ...events];
-        } else if (events) {
-          acc = acc.concat(events);
-        }
-        return acc;
-      }, []);
+      const getMemberEventsFromSnapshot = (snapshot) => eventsConfig
+        .memberEvents
+        .reduce((acc, memberEventConfiguration) => {
+          const events = resolveValueFromDocumentPath(snapshot, memberEventConfiguration);
+          if (Array.isArray(events) && events && events.length) {
+            return [...acc, ...events];
+          }
+          if (events) {
+            return acc.concat(events);
+          }
+          return acc;
+        }, []);
 
       // Get all member events prior to write event
       const prevEvents = prevDoc ? getMemberEventsFromSnapshot(prevDoc) : [];
       // Get all member events after write event
       const newEvents = newDoc ? getMemberEventsFromSnapshot(newDoc) : [];
       // Find the intersection of both collections
-      const memberEvents = newEvents.filter(event => !prevEvents.includes(event));
+      const memberEvents = newEvents.filter((e) => !prevEvents.includes(e));
 
       // Compute the mailchimp subscriber email hash
-      const subscriberHash = subscriberHasher(getSubscriberEmail(prevDoc, newDoc, eventsConfig.subscriberEmail));
+      const subscriberHash = subscriberHasher(
+        getSubscriberEmail(prevDoc, newDoc, eventsConfig.subscriberEmail),
+      );
 
-      // Invoke mailchimp API with updated tags
+      // Invoke mailchimp API with new events
       if (memberEvents && memberEvents.length) {
         const requests = memberEvents.reduce((acc, name) => {
-          acc.push(mailchimp.post(`/lists/${config.mailchimpAudienceId}/members/${subscriberHash}/events`, { name }));
+          acc.push(
+            retry(() => mailchimp.lists.createListMemberEvent(
+              config.mailchimpAudienceId,
+              subscriberHash,
+              { name },
+            ), errorFilterFor404),
+          );
           return acc;
         }, []);
         await Promise.all(requests);
       }
     } catch (e) {
-      functions.logger.log(e);
+      logger.log(e);
     }
   });
 
-exports.addExistingUsersToList = functions.tasks
+exports.addExistingUsersToList = tasks
   .taskQueue()
   .onDispatch(async (data) => {
     const runtime = getExtensions().runtime();
     if (!config.performBackfillFromAuth) {
       await runtime.setProcessingState(
         "PROCESSING_COMPLETE",
-        "No processing requested."
+        "No processing requested.",
       );
       return;
     }
-    const nextPageToken = data.nextPageToken;
-    const pastSuccessCount = parseInt(data["successCount"]) ?? 0;
-    const pastErrorCount = parseInt(data["errorCount"]) ?? 0;
+    const { nextPageToken } = data;
+    const pastSuccessCount = parseInt(data.successCount, 10) ?? 0;
+    const pastErrorCount = parseInt(data.errorCount, 10) ?? 0;
 
     const res = await getAuth().listUsers(100, nextPageToken);
     const mailchimpPromises = res.users.map(async (user) => {
       try {
-        await addUser(user)
+        await addUser(user);
       } catch (err) {
-        if (err.title === 'Member Exists' ) {
-          logs.userAlreadyInAudience(uid, config.mailchimpAudienceId);
+        if (err.title === "Member Exists") {
+          logs.userAlreadyInAudience(user.uid, config.mailchimpAudienceId);
           // Don't throw error if the memeber already exists.
         } else {
           logs.errorAddUser(err);
-          // For other errors, rethrow them so that we can report the total number at the end of the lifecycle event.
+          // For other errors, rethrow them so that we can report
+          //  the total number at the end of the lifecycle event.
           throw err;
         }
       }
     });
 
     const results = await Promise.allSettled(mailchimpPromises);
-    const newSucessCount =
-      pastSuccessCount + results.filter((p) => p.status === "fulfilled").length;
-    const newErrorCount =
-      pastErrorCount + results.filter((p) => p.status === "rejected").length;
+    const newSucessCount = pastSuccessCount + results.filter((p) => p.status === "fulfilled").length;
+    const newErrorCount = pastErrorCount + results.filter((p) => p.status === "rejected").length;
     if (res.pageToken) {
       // If there is a pageToken, we have more users to add, so we enqueue another task.
       const queue = getFunctions().taskQueue(
         "addExistingUsersToList",
-        process.env.EXT_INSTANCE_ID
+        process.env.EXT_INSTANCE_ID,
       );
       await queue.enqueue({
         nextPageToken: res.pageToken,
@@ -419,22 +580,22 @@ exports.addExistingUsersToList = functions.tasks
       if (newErrorCount === 0) {
         await runtime.setProcessingState(
           "PROCESSING_COMPLETE",
-          `${newSucessCount} users added (or already existed) in Mailchimp audience ${config.mailchimpAudienceId}.`
+          `${newSucessCount} users added (or already existed) in Mailchimp audience ${config.mailchimpAudienceId}.`,
         );
       } else if (newErrorCount > 0 && newSucessCount > 0) {
         await runtime.setProcessingState(
           "PROCESSING_WARNING",
-          `${newSucessCount} users added (or already existed) in Mailchimp audience ${config.mailchimpAudienceId}, ` +
-            `failed to add ${newErrorCount} users.  Check function logs for more information.`
+          `${newSucessCount} users added (or already existed) in Mailchimp audience ${config.mailchimpAudienceId}, `
+          + `failed to add ${newErrorCount} users.  Check function logs for more information.`,
         );
       }
       if (newErrorCount > 0 && newSucessCount === 0) {
         await runtime.setProcessingState(
           "PROCESSING_FAILED",
-          `Failed to add ${newErrorCount} users to ${config.mailchimpAudienceId}. Check function logs for more information.`
+          `Failed to add ${newErrorCount} users to ${config.mailchimpAudienceId}. Check function logs for more information.`,
         );
       }
     }
   });
 
-exports.processConfig = processConfig
+exports.processConfig = processConfig;
