@@ -22,7 +22,9 @@ module.exports = {
     logger.log("Completed execution of extension");
   },
   userAlreadyInAudience: (userId, audienceId) => {
-    logger.log(`Attempted added user already in mailchimp audience (userId: ${userId}, audienceId: ${audienceId})`);
+    logger.log(
+      `Attempted added user already in mailchimp audience (userId: ${userId}, audienceId: ${audienceId})`,
+    );
   },
   errorAddUser: (err) => {
     logger.error("Error when adding user to Mailchimp audience", err);
@@ -42,9 +44,7 @@ module.exports = {
     logger.error("Error when initializing extension", err);
   },
   mailchimpNotInitialized: () => {
-    logger.error(
-      "Mailchimp was not initialized correctly, check for errors in the logs",
-    );
+    logger.error("Mailchimp was not initialized correctly, check for errors in the logs");
   },
   start: () => {
     logger.log("Started execution of extension with configuration");
@@ -83,10 +83,24 @@ module.exports = {
       }
       logger.warn(content);
     } else {
-      logger.warn(`Attempt ${attempt} failed. Waiting to attempt retry of operation. Max retries: ${retries}.`);
+      logger.warn(
+        `Attempt ${attempt} failed. Waiting to attempt retry of operation. Max retries: ${retries}.`,
+      );
     }
   },
   subsequentAttemptRecovered: (attempt) => {
     logger.info(`Attempt ${attempt} succeeded, operation recovered.`);
+  },
+  unrecognizedTaskType: (taskType) => {
+    logger.warn(`Unrecognized task type ${taskType}`);
+  },
+  taskSucceeded: (taskType, data) => {
+    logger.info(`Task ${taskType} succeeded with data: `, data);
+  },
+  taskAttemptFailed: (taskType, data) => {
+    logger.warn(`Task ${taskType} attempt failed and will be retried: `, data);
+  },
+  taskFailed: (taskType, data) => {
+    logger.error(`Task ${taskType} failed and cannot be retried: `, data);
   },
 };

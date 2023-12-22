@@ -59,227 +59,347 @@ You will be billed a small amount (typically less than $0.10) when you install o
 
 * Firebase Member Tags Config: Provide a configuration mapping in JSON format indicating which Firestore event(s) to listen for and associate as Mailchimp member tags.
 
-Required Fields:
-1) `memberTags` - The Firestore document fields(s) to retrieve data from and classify as subscriber tags in Mailchimp. Acceptable data types include:
-    
-    - `Array<String>` - The extension will lookup the values in the provided fields and update the subscriber's member tags with the respective data values. The format of each string can be any valid [JMES Path query](https://jmespath.org/). e.g. ["primaryTags", "additionalTags", "tags.primary"]
 
-    - `Array<Object>` - An extended object configuration is supported with the following fields:
-        - `documentPath` - (required) The path to the field in the document containing tag/s, as a string. The format can be any valid [JMES Path query](https://jmespath.org/). e.g. "primaryTags", "tags.primary".
+  Required Fields:
 
-2) `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
+  1) `memberTags` - The Firestore document fields(s) to retrieve data from and classify as subscriber tags in Mailchimp. Acceptable data types include:
+      
+      - `Array<String>` - The extension will lookup the values in the provided fields and update the subscriber's member tags with the respective data values. The format of each string can be any valid [JMES Path query](https://jmespath.org/). e.g. ["primaryTags", "additionalTags", "tags.primary"]
 
-Configuration Example:
-```json
-{
-  "memberTags": ["domainKnowledge", "jobTitle"],
-  "subscriberEmail": "emailAddress"
-}
-```
+      - `Array<Object>` - An extended object configuration is supported with the following fields:
+          - `documentPath` - (required) The path to the field in the document containing tag/s, as a string. The format can be any valid [JMES Path query](https://jmespath.org/). e.g. "primaryTags", "tags.primary".
 
-Or via equivalent extended syntax:
-```json
-{
-  "memberTags": [{ "documentPath": "domainKnowledge" }, { "documentPath": "jobTitle" }],
-  "subscriberEmail": "emailAddress"
-} 
-```
-Based on the sample configuration, if the following Firestore document is provided:
-```json
-{
-  "firstName": "..",
-  "lastName": "..",
-  "phoneNumber": "..",
-  "courseName": "..",
-  "emailAddress": "..", // The config property 'subscriberEmail' maps to this document field
-  "jobTitle": "..", // The config property 'memberTags' maps to this document field
-  "domainKnowledge": "..", // The config property 'memberTags' maps to this document field
-  "activity": []
-} 
-```
-Any data associated with the mapped fields (i.e. `domainKnowledge` and `jobTitle`) will be considered Member Tags and the Mailchimp user's profile will be updated accordingly.
-For complex documents such as:
-```json
-{
-  "emailAddress": "..", // The config property 'subscriberEmail' maps to this document field
-  "meta": {
-    "tags": [{
-      "label": "Red",
-      "value": "red"
-    },{
-      "label": "Team 1",
-      "value": "team1"
-    }]
+  2) `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
+
+
+  Configuration Example:
+
+  ```json
+
+  {
+    "memberTags": ["domainKnowledge", "jobTitle"],
+    "subscriberEmail": "emailAddress"
   }
-} 
-```
-A configuration of the following will allow for the tag values of "red", "team1" to be sent to Mailchimp:
-```json
-{
-  "memberTags": [{ "documentPath": "meta.tags[*].value" }],
-  "subscriberEmail": "emailAddress"
-} 
-```
-NOTE: To disable this cloud function listener, provide an empty JSON config `{}`.
+
+  ```
+
+
+  Or via equivalent extended syntax:
+
+  ```json
+
+  {
+    "memberTags": [{ "documentPath": "domainKnowledge" }, { "documentPath": "jobTitle" }],
+    "subscriberEmail": "emailAddress"
+  } 
+
+  ```
+
+  Based on the sample configuration, if the following Firestore document is provided:
+
+  ```json
+
+  {
+    "firstName": "..",
+    "lastName": "..",
+    "phoneNumber": "..",
+    "courseName": "..",
+    "emailAddress": "..", // The config property 'subscriberEmail' maps to this document field
+    "jobTitle": "..", // The config property 'memberTags' maps to this document field
+    "domainKnowledge": "..", // The config property 'memberTags' maps to this document field
+    "activity": []
+  } 
+
+  ```
+
+  Any data associated with the mapped fields (i.e. `domainKnowledge` and `jobTitle`) will be considered Member Tags and the Mailchimp user's profile will be updated accordingly.
+
+  For complex documents such as:
+
+  ```json
+
+  {
+    "emailAddress": "..", // The config property 'subscriberEmail' maps to this document field
+    "meta": {
+      "tags": [{
+        "label": "Red",
+        "value": "red"
+      },{
+        "label": "Team 1",
+        "value": "team1"
+      }]
+    }
+  } 
+
+  ```
+
+  A configuration of the following will allow for the tag values of "red", "team1" to be sent to Mailchimp:
+
+  ```json
+
+  {
+    "memberTags": [{ "documentPath": "meta.tags[*].value" }],
+    "subscriberEmail": "emailAddress"
+  } 
+
+  ```
+
+  NOTE: To disable this cloud function listener, provide an empty JSON config `{}`.
 
 * Firebase Merge Fields Watch Path: The Firestore collection to watch for merge field changes
 
 * Firebase Merge Fields Config: Provide a configuration mapping in JSON format indicating which Firestore event(s) to listen for and associate as Mailchimp merge fields.
 
-Required Fields:
-1) `mergeFields` - JSON mapping representing the Firestore document fields to associate with Mailchimp Merge Fields. The key format can be any valid [JMES Path query](https://jmespath.org/) as a string. The value must be the name of a Mailchimp Merge Field as a string, or an object with the following properties:
 
-    - `mailchimpFieldName` - (required) The name of the Mailchimp Merge Field to map to, e.g. "FNAME". Paths are allowed, e.g. "ADDRESS.addr1" will map to an "ADDRESS" object.
+  Required Fields:
 
-    - `typeConversion` - (optional) Whether to apply a type conversion to the value found at documentPath. Valid options: 
-        
-        - `none`: no conversion is applied.
+  1) `mergeFields` - JSON mapping representing the Firestore document fields to associate with Mailchimp Merge Fields. The key format can be any valid [JMES Path query](https://jmespath.org/) as a string. The value must be the name of a Mailchimp Merge Field as a string, or an object with the following properties:
 
-        - `timestampToDate`: Converts from a [Firebase Timestamp](https://firebase.google.com/docs/reference/android/com/google/firebase/Timestamp) to YYYY-MM-DD format (UTC).
-        
-        - `stringToNumber`: Converts to a number.
+      - `mailchimpFieldName` - (required) The name of the Mailchimp Merge Field to map to, e.g. "FNAME". Paths are allowed, e.g. "ADDRESS.addr1" will map to an "ADDRESS" object.
 
-    - `when` - (optional) When to send the value of the field to Mailchimp. Options are "always" (which will send the value of this field on _any_ change to the document, not just this field) or "changed". Default is "changed".
+      - `typeConversion` - (optional) Whether to apply a type conversion to the value found at documentPath. Valid options: 
+          
+          - `none`: no conversion is applied.
 
-2) `statusField` - An optional configuration setting for syncing the users mailchimp status. Properties are:
+          - `timestampToDate`: Converts from a [Firebase Timestamp](https://firebase.google.com/docs/reference/android/com/google/firebase/Timestamp) to YYYY-MM-DD format (UTC).
+          
+          - `stringToNumber`: Converts to a number.
 
-    - `documentPath` - (required) The path to the field in the document containing the users status, as a string. The format can be any valid [JMES Path query](https://jmespath.org/). e.g. "status", "meta.status".
+      - `when` - (optional) When to send the value of the field to Mailchimp. Options are "always" (which will send the value of this field on _any_ change to the document, not just this field) or "changed". Default is "changed".
 
-    - `statusFormat` - (optional) Indicates the format that the status field is. The options are:
-        - `"string"` - The default, this will sync the value from the status field as is, with no modification.
-        - `"boolean"` - This will check if the value is truthy (e.g. true, 1, "subscribed"), and if so will resolve the status to "subscribed", otherwise it will resolve to "unsubscribed".
+  2) `statusField` - An optional configuration setting for syncing the users mailchimp status. Properties are:
 
-3) `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
+      - `documentPath` - (required) The path to the field in the document containing the users status, as a string. The format can be any valid [JMES Path query](https://jmespath.org/). e.g. "status", "meta.status".
 
-Configuration Example:
-```json
-{
-  "mergeFields": {
-    "firstName": "FNAME",
-    "lastName": "LNAME",
-    "phoneNumber": "PHONE"
-  },
-  "subscriberEmail": "emailAddress"
-}
-```
-Or via equivalent extended syntax:
-```json
-{
-  "mergeFields": {
-    "firstName": { "mailchimpFieldName": "FNAME" },
-    "lastName":{ "mailchimpFieldName": "LNAME" },
-    "phoneNumber": { "mailchimpFieldName": "PHONE", "when": "changed" }
-  },
-  "subscriberEmail": "emailAddress"
-} 
-```
+      - `statusFormat` - (optional) Indicates the format that the status field is. The options are:
+          - `"string"` - The default, this will sync the value from the status field as is, with no modification.
+          - `"boolean"` - This will check if the value is truthy (e.g. true, 1, "subscribed"), and if so will resolve the status to "subscribed", otherwise it will resolve to "unsubscribed".
 
-Based on the sample configuration, if the following Firestore document is provided:
-```json
-{
-  "firstName": "..", // The config property FNAME maps to this document field
-  "lastName": "..", // The config property LNAME maps to this document field
-  "phoneNumber": "..", // The config property PHONE maps to this document field
-  "emailAddress": "..", // The config property "subscriberEmail" maps to this document field
-  "jobTitle": "..", 
-  "domainKnowledge": "..",
-  "activity": []
-} 
-```
+  3) `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
 
-Any data associated with the mapped fields (i.e. firstName, lastName, phoneNumber) will be considered Merge Fields and the Mailchimp user's profile will be updated accordingly.
-If there is a requirement to always send the firstName and lastName values, the `"when": "always"` configuration option can be set on those fields, like so:
-```json
-{
-  "mergeFields": {
-    "firstName": { "mailchimpFieldName": "FNAME", "when": "always" },
-    "lastName":{ "mailchimpFieldName": "LNAME", "when": "always" },
-    "phoneNumber": { "mailchimpFieldName": "PHONE", "when": "changed" }
-  },
-  "subscriberEmail": "emailAddress"
-} 
-```
-This can be handy if Firebase needs to remain the source or truth or if the extension has been installed after data is already in the collection and there is a data migration period.
-If the users status is also captured in the Firestore document, the status can be updated in Mailchimp by using the following configuration:
-```json
-{
-  "statusField": {
-    "documentPath": "meta.status",
-    "statusFormat": "string",
-  },
-  "subscriberEmail": "emailAddress"
-} 
-```
-This can be as well, or instead of, the `mergeFields` configuration property being set.
-NOTE: To disable this cloud function listener, provide an empty JSON config `{}`.
+
+  Configuration Example:
+
+  ```json
+
+  {
+    "mergeFields": {
+      "firstName": "FNAME",
+      "lastName": "LNAME",
+      "phoneNumber": "PHONE"
+    },
+    "subscriberEmail": "emailAddress"
+  }
+
+  ```
+
+  Or via equivalent extended syntax:
+
+  ```json
+
+  {
+    "mergeFields": {
+      "firstName": { "mailchimpFieldName": "FNAME" },
+      "lastName":{ "mailchimpFieldName": "LNAME" },
+      "phoneNumber": { "mailchimpFieldName": "PHONE", "when": "changed" }
+    },
+    "subscriberEmail": "emailAddress"
+  } 
+
+  ```
+
+
+  Based on the sample configuration, if the following Firestore document is provided:
+
+  ```json
+
+  {
+    "firstName": "..", // The config property FNAME maps to this document field
+    "lastName": "..", // The config property LNAME maps to this document field
+    "phoneNumber": "..", // The config property PHONE maps to this document field
+    "emailAddress": "..", // The config property "subscriberEmail" maps to this document field
+    "jobTitle": "..", 
+    "domainKnowledge": "..",
+    "activity": []
+  } 
+
+  ```
+
+
+  Any data associated with the mapped fields (i.e. firstName, lastName, phoneNumber) will be considered Merge Fields and the Mailchimp user's profile will be updated accordingly.
+
+  If there is a requirement to always send the firstName and lastName values, the `"when": "always"` configuration option can be set on those fields, like so:
+
+  ```json
+
+  {
+    "mergeFields": {
+      "firstName": { "mailchimpFieldName": "FNAME", "when": "always" },
+      "lastName":{ "mailchimpFieldName": "LNAME", "when": "always" },
+      "phoneNumber": { "mailchimpFieldName": "PHONE", "when": "changed" }
+    },
+    "subscriberEmail": "emailAddress"
+  } 
+
+  ```
+
+  This can be handy if Firebase needs to remain the source or truth or if the extension has been installed after data is already in the collection and there is a data migration period.
+
+  If the users status is also captured in the Firestore document, the status can be updated in Mailchimp by using the following configuration:
+
+  ```json
+
+  {
+    "statusField": {
+      "documentPath": "meta.status",
+      "statusFormat": "string",
+    },
+    "subscriberEmail": "emailAddress"
+  } 
+
+  ```
+
+  This can be as well, or instead of, the `mergeFields` configuration property being set.
+
+  NOTE: To disable this cloud function listener, provide an empty JSON config `{}`.
 
 * Firebase Member Events Watch Path: The Firestore collection to watch for member event changes
 
 * Firebase Member Events Config: Provide a configuration mapping in JSON format indicating which Firestore event(s) to listen for and associate as Mailchimp merge events.
 
-Required Fields:
-1) `memberEvents` - The Firestore document fields(s) to retrieve data from and classify as member events in Mailchimp. Acceptable data types include:
 
-  - `Array<String>` - The extension will lookup the values (mailchimp event names) in the provided fields and post those events to Mailchimp on the subscriber's activity feed. The format can be any valid [JMES Path query](https://jmespath.org/). e.g. ["events", "meta.events"]
+  Required Fields:
 
-  - `Array<Object>` - An extended object configuration is supported with the following fields:
-      - `documentPath` - (required) The path to the field in the document containing events. The format can be any valid [JMES Path query](https://jmespath.org/). e.g. "events", "meta.events".
+  1) `memberEvents` - The Firestore document fields(s) to retrieve data from and classify as member events in Mailchimp. Acceptable data types include:
 
-2) `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
+    - `Array<String>` - The extension will lookup the values (mailchimp event names) in the provided fields and post those events to Mailchimp on the subscriber's activity feed. The format can be any valid [JMES Path query](https://jmespath.org/). e.g. ["events", "meta.events"]
 
-Configuration Example:
-```json
-{
-  "memberEvents": [
-    "activity"
-  ],
-  "subscriberEmail": "emailAddress"
-} 
-```
-Or via equivalent extended syntax:
-```json
-{
-  "memberEvents": [{ "documentPath": "activity" }],
-  "subscriberEmail": "emailAddress"
-} 
-```
-Based on the sample configuration, if the following Firestore document is provided:
-```json
-{
-  "firstName": "..",
-  "lastName": "..",
-  "phoneNumber": "..",
-  "courseName": "..",
-  "jobTitle": "..", 
-  "domainKnowledge": "..",
-  "emailAddress": "..", // The config property "subscriberEmail" maps to this document field
-  "activity": ["send_welcome_email"] // The config property "memberTags" maps to this document field
-} 
-```
-Any data associated with the mapped fields (i.e. `activity`) will be considered events and the Mailchimp user's profile will be updated accordingly.
-For complex documents such as:
-```json
-{
-  "emailAddress": "..", // The config property 'subscriberEmail' maps to this document field
-  "meta": {
-    "events": [{
-      "title": "Registered",
-      "date": "2021-10-08T00:00:00Z"
-    },{
-      "title": "Invited Friend",
-      "date": "2021-10-09T00:00:00Z"
-    }]
-  }
-} 
-```
-A configuration of the following will allow for the events of "Registered", "Invited Friend" to be sent to Mailchimp:
-```json
-{
-  "memberEvents": [{ "documentPath": "meta.events[*].title" }],
-  "subscriberEmail": "emailAddress"
-} 
-```
-NOTE: To disable this cloud function listener, provide an empty JSON config `{}`.
+    - `Array<Object>` - An extended object configuration is supported with the following fields:
+        - `documentPath` - (required) The path to the field in the document containing events. The format can be any valid [JMES Path query](https://jmespath.org/). e.g. "events", "meta.events".
+
+  2) `subscriberEmail` - The Firestore document field capturing the user email as is recognized by Mailchimp
+
+
+  Configuration Example:
+
+  ```json
+
+  {
+    "memberEvents": [
+      "activity"
+    ],
+    "subscriberEmail": "emailAddress"
+  } 
+
+  ```
+
+  Or via equivalent extended syntax:
+
+  ```json
+
+  {
+    "memberEvents": [{ "documentPath": "activity" }],
+    "subscriberEmail": "emailAddress"
+  } 
+
+  ```
+
+  Based on the sample configuration, if the following Firestore document is provided:
+
+  ```json
+
+  {
+    "firstName": "..",
+    "lastName": "..",
+    "phoneNumber": "..",
+    "courseName": "..",
+    "jobTitle": "..", 
+    "domainKnowledge": "..",
+    "emailAddress": "..", // The config property "subscriberEmail" maps to this document field
+    "activity": ["send_welcome_email"] // The config property "memberTags" maps to this document field
+  } 
+
+  ```
+
+  Any data associated with the mapped fields (i.e. `activity`) will be considered events and the Mailchimp user's profile will be updated accordingly.
+
+  For complex documents such as:
+
+  ```json
+
+  {
+    "emailAddress": "..", // The config property 'subscriberEmail' maps to this document field
+    "meta": {
+      "events": [{
+        "title": "Registered",
+        "date": "2021-10-08T00:00:00Z"
+      },{
+        "title": "Invited Friend",
+        "date": "2021-10-09T00:00:00Z"
+      }]
+    }
+  } 
+
+  ```
+
+  A configuration of the following will allow for the events of "Registered", "Invited Friend" to be sent to Mailchimp:
+
+  ```json
+
+  {
+    "memberEvents": [{ "documentPath": "meta.events[*].title" }],
+    "subscriberEmail": "emailAddress"
+  } 
+
+  ```
+
+  NOTE: To disable this cloud function listener, provide an empty JSON config `{}`.
+
+* Backfill Configuration: Import existing information in Firebase (Authentication and Firestore) into the Mailchimp audience.
+Provide a configuration object to control the backfill settings. Leave this as an empty JSON object `{}` to disable.
+
+
+    *WARNING!* With all `sources` on, this will trigger reading through all data in Firebase Authentication, AND all documents in the _unique_ Firestore collection paths and for items matching the required configuration, send them on to Mailchimp. 
+    Depending on the amount of data read, this may trigger additional costs in line with [Firebase's pricing](https://firebase.google.com/pricing) for Authentication, Cloud Firestore (Document reads and Network egress) and Cloud Functions (Invocations, GB-seconds, CPU-seconds, Outbound networking).
+
+
+    *WARNING!* This backfill operation will overwrite the data in Mailchimp with the data from the `sources` specified. If manual changes have been made to audience members in Mailchimp directly, these changes will be lost.
+
+
+    Available fields:
+
+    1) `sources` - `Array<"AUTH" | "MERGE_FIELDS" | "MEMBER_TAGS" | "MEMBER_EVENTS">` 
+        The data sources that the backfill operation will attempt to synchronise to Mailchimp. 
+        The configuration for each one is read from its respective settings, e.g. the `MEMBER_EVENTS` source will use the MAILCHIMP_MEMBER_EVENTS_WATCH_PATH and MAILCHIMP_MEMBER_EVENTS_CONFIG in order to synchronise the correct data.
+
+    2) `events` - `Array<"INSTALL" | "UPDATE" | "CONFIGURE">`
+        The extension events that should trigger the backfill operation. 
+        `INSTALL` will backfill only when the extension is installed. 
+        `UPDATE` will backfill only when the extension is updated. 
+        `CONFIGURE` will backfill only when the extension configuration is changed.
+
+
+    Example to synchronise all data on all extension events:
+
+    ```json
+
+    {
+      "sources": ["AUTH", "MERGE_FIELDS", "MEMBER_TAGS", "MEMBER_EVENTS"],
+      "events": ["INSTALL", "UPDATE", "CONFIGURE"]
+    } 
+
+    ```
+
+    Example to synchronise only Firestore data when the extension configuration is changed:
+
+    ```json
+
+    {
+      "sources": ["MERGE_FIELDS", "MEMBER_TAGS", "MEMBER_EVENTS"],
+      "events": ["CONFIGURE"]
+    } 
+
+    ```
 
 
 
@@ -294,3 +414,5 @@ NOTE: To disable this cloud function listener, provide an empty JSON config `{}`
 * **mergeFieldsHandler:** Merge fields provide the ability to create new properties that can be associated with Mailchimp subscriber. The mergeFieldsHandler function listens for Firestore write events based on specified config path, then automatically populates the Mailchimp subscriber's respective merge fields.
 
 * **memberEventsHandler:** Member events are Mailchimp specific activity events that can be created and associated with a predefined action. The memberEventsHandler function Listens for Firestore write events based on specified config path, then automatically uses the document data to create a Mailchimp event on the subscriber's profile which can subsequently trigger automation workflows.
+
+* **addExistingUsersToList:** Adds existing Firebase Authentication users into the specified Mailchimp audience.

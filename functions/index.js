@@ -1,77 +1,33 @@
 const crypto = require("crypto");
 const assert = require("assert");
 const _ = require("lodash");
-const {
-  auth, firestore, logger, tasks,
-} = require("firebase-functions");
+const { auth, firestore, logger, tasks } = require("firebase-functions");
+const { Timestamp } = require("firebase-admin/firestore");
 const mailchimp = require("@mailchimp/mailchimp_marketing");
 const jmespath = require("jmespath");
 const { initializeApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { getExtensions } = require("firebase-admin/extensions");
 const { getFunctions } = require("firebase-admin/functions");
-const validation = require("./validation");
+const rawConfig = require("./config");
+const { readConfig } = require("./read-config");
 
-let config = require("./config");
+/**
+ * @type {import("./read-config").Config}
+ */
+let config = {};
 const logs = require("./logs");
-
-const CONFIG_PARAMS = Object.freeze({
-  mailchimpMemberTags: validation.validateTagConfig,
-  mailchimpMergeField: validation.validateMergeFieldsConfig,
-  mailchimpMemberEvents: validation.validateEventsConfig,
-});
 
 initializeApp();
 logs.init();
 
 function processConfig(configInput) {
-  // extension.yaml receives serialized JSON inputs representing configuration settings
-  //  for merge fields, tags, and custom events. the following code deserialized the JSON
-  //  inputs and builds a configuration object with each custom setting path
-  //  (tags, merge fields, custom events) at the root.
-  config = Object.entries(configInput).reduce((acc, [key, value]) => {
-    const logError = (message) => {
-      logger.log(message, key, value);
-      return acc;
-    };
-    if (configInput[key] && Object.keys(CONFIG_PARAMS).includes(key)) {
-      const parsedConfig = JSON.parse(configInput[key]);
-      if (!configInput[`${key}WatchPath`]) {
-        // Firebase functions must listen to a document path
-        // As such, a specific id (users/marie) or wildcard path (users/{userId}) must be specified
-        // https://firebase.google.com/docs/firestore/extend-with-functions#wildcards-parameters
-        return logError(`${key}WatchPath config property is undefined. Please ensure a proper watch path param has been provided.`);
-      }
-      if (configInput[`${key}WatchPath`] === "N/A") {
-        // The Firebase platform requires a watch path to be provided conforming to a
-        //  regular expression string/string. However, given this Mailchimp extension
-        //  represents a suite of features, it's possible a user will not utilize all of them
-        // As such, when a watch path of "N/A" is provided as input, it serves as an indicator
-        //  to skip this feature and treat the function as NO-OP.
-        return logError(`${key}WatchPath property is N/A. Setting ${configInput[key]} cloud function as NO-OP.`);
-      }
-
-      if (_.isEmpty(parsedConfig)) {
-        return logError(`${key} configuration not provided.`);
-      }
-
-      const validator = CONFIG_PARAMS[key];
-      const validationResult = validator(parsedConfig);
-      if (!validationResult.valid) {
-        return logError(`${key} syntax is invalid: \n${validationResult.errors.map((e) => e.message).join(",\n")}`);
-      }
-
-      // persist the deserialized JSON
-      acc[key] = parsedConfig;
-    } else {
-      // persist the string value as-is (location, oAuth Token, AudienceId, Contact Status, etc.)
-      acc[key] = value;
-    }
-    return acc;
-  }, {});
+  config = readConfig(configInput, logger);
 }
 
 try {
+  processConfig(rawConfig);
+
   // Configure mailchimp api client
   // The datacenter id is appended to the API key in the form key-dc;
   // if your API key is 0123456789abcdef0123456789abcde-us6, then the data center subdomain is us6
@@ -91,8 +47,6 @@ try {
   } else {
     throw new Error("Unable to set Mailchimp configuration");
   }
-
-  processConfig(config);
 } catch (err) {
   logs.initError(err);
 }
@@ -102,7 +56,9 @@ try {
  * @param {string} email
  * @returns {string} The MD5 Hash
  */
-function subscriberHasher(email) { return crypto.createHash("md5").update(email.toLowerCase()).digest("hex"); }
+function subscriberHasher(email) {
+  return crypto.createHash("md5").update(email.toLowerCase()).digest("hex");
+}
 
 /**
  * Extracts the subscriber email from a document, based on a string path.
@@ -125,7 +81,8 @@ function getSubscriberEmail(prevDoc, newDoc, emailPath) {
  */
 function resolveValueFromDocumentPath(doc, documentPathOrConfig, defaultValue = undefined) {
   const documentSelector = _.isObject(documentPathOrConfig)
-    ? documentPathOrConfig.documentPath : documentPathOrConfig;
+    ? documentPathOrConfig.documentPath
+    : documentPathOrConfig;
   return jmespath.search(doc, documentSelector) ?? defaultValue;
 }
 
@@ -150,10 +107,12 @@ async function wait(attempt) {
  * @returns {string} The date in string format.
  */
 function convertTimestampToMailchimpDate(timestamp) {
-  assert(timestamp instanceof firestore.Timestamp, `Value ${timestamp} is not a Timestamp`);
+  assert(timestamp instanceof Timestamp, `Value ${timestamp} is not a Timestamp`);
   const timestampDate = timestamp.toDate();
   const padNumber = (number) => _.padStart(number, 2, "0");
-  return `${timestampDate.getUTCFullYear()}-${padNumber(timestampDate.getUTCMonth() + 1)}-${padNumber(timestampDate.getUTCDate())}`;
+  return `${timestampDate.getUTCFullYear()}-${padNumber(
+    timestampDate.getUTCMonth() + 1,
+  )}-${padNumber(timestampDate.getUTCDate())}`;
 }
 
 /**
@@ -165,8 +124,8 @@ function convertTimestampToMailchimpDate(timestamp) {
  * @returns {Promise<T>} The response of the function or the first error thrown.
  */
 async function retry(fn, errorFilter) {
-  let attempt = 0; let
-    firstError = null;
+  let attempt = 0;
+  let firstError = null;
   const retries = Math.max(0, parseInt(config.mailchimpRetryAttempts || "0", 10));
   do {
     try {
@@ -210,82 +169,73 @@ async function addUser(user) {
   }
 
   logs.userAdding(uid, config.mailchimpAudienceId);
-  const results = await mailchimp.post(
-    `/lists/${config.mailchimpAudienceId}/members`,
-    {
-      email_address: email,
-      status: config.mailchimpContactStatus,
-    },
-  );
-  logs.userAdded(
-    uid,
-    config.mailchimpAudienceId,
-    results.id,
-    config.mailchimpContactStatus,
-  );
+  const results = await mailchimp.lists.addListMember(config.mailchimpAudienceId, {
+    email_address: email,
+    status: config.mailchimpContactStatus,
+  });
+  logs.userAdded(uid, config.mailchimpAudienceId, results.id, config.mailchimpContactStatus);
   return true;
 }
 
-exports.addUserToList = auth.user().onCreate(
-  async (user) => {
-    logs.start();
+exports.addUserToList = auth.user().onCreate(async (user) => {
+  logs.start();
 
-    if (!mailchimp) {
-      logs.mailchimpNotInitialized();
-      return;
-    }
+  if (!mailchimp) {
+    logs.mailchimpNotInitialized();
+    return;
+  }
 
-    try {
-      // this call is not retried, as a 404 here indicates
-      //  the audience ID is incorrect which will not change.
-      const userAdded = await addUser(user);
-      if (userAdded) { logs.complete(); }
-    } catch (err) {
-      if (err.title === "Member Exists") {
-        logs.userAlreadyInAudience(user.uid, config.mailchimpAudienceId);
-      } else {
-        logs.errorAddUser(err);
-      }
-    }
-  },
-);
-
-exports.removeUserFromList = auth.user().onDelete(
-  async (user) => {
-    logs.start();
-
-    if (!mailchimp) {
-      logs.mailchimpNotInitialized();
-      return;
-    }
-
-    const { email, uid } = user;
-    if (!email) {
-      logs.userNoEmail();
-      return;
-    }
-
-    try {
-      const hashed = subscriberHasher(email);
-
-      logs.userRemoving(uid, hashed, config.mailchimpAudienceId);
-      await retry(() => mailchimp.lists.deleteListMember(
-        config.mailchimpAudienceId,
-        hashed,
-      ), errorFilterFor404);
-      logs.userRemoved(uid, hashed, config.mailchimpAudienceId);
+  try {
+    // this call is not retried, as a 404 here indicates
+    //  the audience ID is incorrect which will not change.
+    const userAdded = await addUser(user);
+    if (userAdded) {
       logs.complete();
-    } catch (err) {
-      if (err.title === "Method Not Allowed") {
-        logs.userNotInAudience();
-      } else {
-        logs.errorRemoveUser(err);
-      }
     }
-  },
-);
+  } catch (err) {
+    if (err.title === "Member Exists") {
+      logs.userAlreadyInAudience(user.uid, config.mailchimpAudienceId);
+    } else {
+      logs.errorAddUser(err);
+    }
+  }
+});
 
-exports.memberTagsHandler = firestore.document(config.mailchimpMemberTagsWatchPath)
+exports.removeUserFromList = auth.user().onDelete(async (user) => {
+  logs.start();
+
+  if (!mailchimp) {
+    logs.mailchimpNotInitialized();
+    return;
+  }
+
+  const { email, uid } = user;
+  if (!email) {
+    logs.userNoEmail();
+    return;
+  }
+
+  try {
+    const hashed = subscriberHasher(email);
+
+    logs.userRemoving(uid, hashed, config.mailchimpAudienceId);
+    await retry(
+      () => mailchimp.lists.deleteListMember(config.mailchimpAudienceId, hashed),
+      errorFilterFor404,
+    );
+    logs.userRemoved(uid, hashed, config.mailchimpAudienceId);
+    logs.complete();
+  } catch (err) {
+    if (err.title === "Method Not Allowed") {
+      logs.userNotInAudience();
+    } else {
+      logs.errorRemoveUser(err);
+    }
+  }
+});
+
+exports.memberTagsHandler = firestore
+  .document(config.mailchimpMemberTagsWatchPath)
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMemberTags)) return;
@@ -304,22 +254,22 @@ exports.memberTagsHandler = firestore.document(config.mailchimpMemberTagsWatchPa
         return;
       }
       if (!Array.isArray(tagsConfig.memberTags)) {
-        logger.log("\"memberTags\" must be an array");
+        logger.log(`"memberTags" must be an array`);
         return;
       }
 
       // Get snapshot of document before & after write event
-      const prevDoc = event && event.before && event.before.data();
-      const newDoc = event && event.after && event.after.data();
+      const prevDoc = event?.before?.data();
+      const newDoc = event?.after?.data();
 
       // Retrieves subscriber tags before/after write event
-      const getTagsFromEventSnapshot = (snapshot) => tagsConfig
-        .memberTags
-        .reduce((acc, tagConfig) => {
+      const getTagsFromEventSnapshot = (snapshot) =>
+        tagsConfig.memberTags.reduce((acc, tagConfig) => {
           const tags = resolveValueFromDocumentPath(snapshot, tagConfig);
           if (Array.isArray(tags) && tags && tags.length) {
             return [...acc, ...tags];
-          } if (tags) {
+          }
+          if (tags) {
             return acc.concat(tags);
           }
           return acc;
@@ -331,8 +281,12 @@ exports.memberTagsHandler = firestore.document(config.mailchimpMemberTagsWatchPa
       const newTags = newDoc ? getTagsFromEventSnapshot(newDoc) : [];
 
       // Compute the delta between existing/new tags
-      const tagsToRemove = prevTags.filter((tag) => !newTags.includes(tag)).map((tag) => ({ name: tag, status: "inactive" }));
-      const tagsToAdd = newTags.filter((tag) => !prevTags.includes(tag)).map((tag) => ({ name: tag, status: "active" }));
+      const tagsToRemove = prevTags
+        .filter((tag) => !newTags.includes(tag))
+        .map((tag) => ({ name: tag, status: "inactive" }));
+      const tagsToAdd = newTags
+        .filter((tag) => !prevTags.includes(tag))
+        .map((tag) => ({ name: tag, status: "active" }));
       const tags = [...tagsToRemove, ...tagsToAdd];
 
       // Compute the mailchimp subscriber email hash
@@ -341,19 +295,22 @@ exports.memberTagsHandler = firestore.document(config.mailchimpMemberTagsWatchPa
       );
 
       // Invoke mailchimp API with updated tags
-      if (tags && tags.length) {
-        await retry(() => mailchimp.lists.updateListMemberTags(
-          config.mailchimpAudienceId,
-          subscriberHash,
-          { tags },
-        ), errorFilterFor404);
+      if (tags?.length) {
+        await retry(
+          () =>
+            mailchimp.lists.updateListMemberTags(config.mailchimpAudienceId, subscriberHash, {
+              tags,
+            }),
+          errorFilterFor404,
+        );
       }
     } catch (e) {
       logger.log(e);
     }
   });
 
-exports.mergeFieldsHandler = firestore.document(config.mailchimpMergeFieldWatchPath)
+exports.mergeFieldsHandler = firestore
+  .document(config.mailchimpMergeFieldWatchPath)
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMergeField)) return;
@@ -377,22 +334,31 @@ exports.mergeFieldsHandler = firestore.document(config.mailchimpMergeFieldWatchP
       }
 
       // Get snapshot of document before & after write event
-      const prevDoc = event && event.before && event.before.data();
-      const newDoc = event && event.after && event.after.data();
+      const prevDoc = event?.before?.data();
+      const newDoc = event?.after?.data();
 
       // Determine all the merge prior to write event
-      const mergeFieldsToUpdate = Object.entries(mergeFieldsConfig.mergeFields)
-        .reduce((acc, [documentPath, mergeFieldConfig]) => {
+      const mergeFieldsToUpdate = Object.entries(mergeFieldsConfig.mergeFields).reduce(
+        (acc, [documentPath, mergeFieldConfig]) => {
           const mergeFieldName = _.isObject(mergeFieldConfig)
-            ? mergeFieldConfig.mailchimpFieldName : mergeFieldConfig;
+            ? mergeFieldConfig.mailchimpFieldName
+            : mergeFieldConfig;
 
           const prevMergeFieldValue = jmespath.search(prevDoc, documentPath);
           // lookup the same field value in new snapshot
           const newMergeFieldValue = jmespath.search(newDoc, documentPath) ?? "";
 
           // if delta exists or the field should always be sent, then update accumulator collection
-          if (prevMergeFieldValue !== newMergeFieldValue || (_.isObject(mergeFieldConfig) && mergeFieldConfig.when && mergeFieldConfig.when === "always")) {
-            const conversionToApply = _.isObject(mergeFieldConfig) && mergeFieldConfig.typeConversion ? mergeFieldConfig.typeConversion : "none";
+          if (
+            prevMergeFieldValue !== newMergeFieldValue ||
+            (_.isObject(mergeFieldConfig) &&
+              mergeFieldConfig.when &&
+              mergeFieldConfig.when === "always")
+          ) {
+            const conversionToApply =
+              _.isObject(mergeFieldConfig) && mergeFieldConfig.typeConversion
+                ? mergeFieldConfig.typeConversion
+                : "none";
             let finalValue = newMergeFieldValue;
             switch (conversionToApply) {
               case "timestampToDate":
@@ -400,7 +366,10 @@ exports.mergeFieldsHandler = firestore.document(config.mailchimpMergeFieldWatchP
                 break;
               case "stringToNumber":
                 finalValue = Number(newMergeFieldValue);
-                assert(!isNaN(finalValue), `${newMergeFieldValue} could not be converted to a number.`);
+                assert(
+                  !isNaN(finalValue),
+                  `${newMergeFieldValue} could not be converted to a number.`,
+                );
                 break;
               default:
                 break;
@@ -408,7 +377,9 @@ exports.mergeFieldsHandler = firestore.document(config.mailchimpMergeFieldWatchP
             _.set(acc, mergeFieldName, finalValue);
           }
           return acc;
-        }, {});
+        },
+        {},
+      );
 
       // Compute the mailchimp subscriber email hash
       const subscriberHash = subscriberHasher(
@@ -431,8 +402,7 @@ exports.mergeFieldsHandler = firestore.document(config.mailchimpMergeFieldWatchP
         // lookup the same field value in new snapshot
         let newStatusValue = jmespath.search(newDoc, documentPath) ?? "";
 
-        if (statusFormat && statusFormat === "boolean"
-        ) {
+        if (statusFormat && statusFormat === "boolean") {
           prevStatusValue = prevStatusValue ? "subscribed" : "unsubscribed";
           newStatusValue = newStatusValue ? "subscribed" : "unsubscribed";
         }
@@ -445,18 +415,18 @@ exports.mergeFieldsHandler = firestore.document(config.mailchimpMergeFieldWatchP
 
       // Invoke mailchimp API with updated data
       if (params.merge_fields || params.status) {
-        await retry(() => mailchimp.lists.setListMember(
-          config.mailchimpAudienceId,
-          subscriberHash,
-          params,
-        ), errorFilterFor404);
+        await retry(
+          () => mailchimp.lists.setListMember(config.mailchimpAudienceId, subscriberHash, params),
+          errorFilterFor404,
+        );
       }
     } catch (e) {
       logger.log(e);
     }
   });
 
-exports.memberEventsHandler = firestore.document(config.mailchimpMemberEventsWatchPath)
+exports.memberEventsHandler = firestore
+  .document(config.mailchimpMemberEventsWatchPath)
   .onWrite(async (event) => {
     // If an empty JSON configuration was provided then consider function as NO-OP
     if (_.isEmpty(config.mailchimpMemberEvents)) return;
@@ -480,13 +450,12 @@ exports.memberEventsHandler = firestore.document(config.mailchimpMemberEventsWat
       }
 
       // Get snapshot of document before & after write event
-      const prevDoc = event && event.before && event.before.data();
-      const newDoc = event && event.after && event.after.data();
+      const prevDoc = event?.before?.data();
+      const newDoc = event?.after?.data();
 
       // Retrieves subscriber tags before/after write event
-      const getMemberEventsFromSnapshot = (snapshot) => eventsConfig
-        .memberEvents
-        .reduce((acc, memberEventConfiguration) => {
+      const getMemberEventsFromSnapshot = (snapshot) =>
+        eventsConfig.memberEvents.reduce((acc, memberEventConfiguration) => {
           const events = resolveValueFromDocumentPath(snapshot, memberEventConfiguration);
           if (Array.isArray(events) && events && events.length) {
             return [...acc, ...events];
@@ -510,14 +479,16 @@ exports.memberEventsHandler = firestore.document(config.mailchimpMemberEventsWat
       );
 
       // Invoke mailchimp API with new events
-      if (memberEvents && memberEvents.length) {
+      if (memberEvents?.length) {
         const requests = memberEvents.reduce((acc, name) => {
           acc.push(
-            retry(() => mailchimp.lists.createListMemberEvent(
-              config.mailchimpAudienceId,
-              subscriberHash,
-              { name },
-            ), errorFilterFor404),
+            retry(
+              () =>
+                mailchimp.lists.createListMemberEvent(config.mailchimpAudienceId, subscriberHash, {
+                  name,
+                }),
+              errorFilterFor404,
+            ),
           );
           return acc;
         }, []);
@@ -528,74 +499,229 @@ exports.memberEventsHandler = firestore.document(config.mailchimpMemberEventsWat
     }
   });
 
-exports.addExistingUsersToList = tasks
-  .taskQueue()
-  .onDispatch(async (data) => {
-    const runtime = getExtensions().runtime();
-    if (!config.performBackfillFromAuth) {
+exports.addExistingUsersToList = tasks.taskQueue().onDispatch(async (data) => {
+  const runtime = getExtensions().runtime();
+  if (!config.backfillConfig) {
+    await runtime.setProcessingState("PROCESSING_COMPLETE", "No processing requested.");
+    return;
+  }
+  const { nextPageToken } = data;
+  const pastSuccessCount = parseInt(data.successCount, 10) ?? 0;
+  const pastErrorCount = parseInt(data.errorCount, 10) ?? 0;
+
+  const res = await getAuth().listUsers(100, nextPageToken);
+  const mailchimpPromises = res.users.map(async (user) => {
+    try {
+      await addUser(user);
+    } catch (err) {
+      if (err.title === "Member Exists") {
+        logs.userAlreadyInAudience(user.uid, config.mailchimpAudienceId);
+        // Don't throw error if the member already exists.
+      } else {
+        logs.errorAddUser(err);
+        // For other errors, rethrow them so that we can report
+        //  the total number at the end of the lifecycle event.
+        throw err;
+      }
+    }
+  });
+
+  const results = await Promise.allSettled(mailchimpPromises);
+  const newSucessCount = pastSuccessCount + results.filter((p) => p.status === "fulfilled").length;
+  const newErrorCount = pastErrorCount + results.filter((p) => p.status === "rejected").length;
+  if (res.pageToken) {
+    // If there is a pageToken, we have more users to add, so we enqueue another task.
+    const queue = getFunctions().taskQueue("addExistingUsersToList", process.env.EXT_INSTANCE_ID);
+    await queue.enqueue({
+      nextPageToken: res.pageToken,
+      successCount: newSucessCount,
+      errorCount: newErrorCount,
+    });
+  } else {
+    // The backfill is complete, now we need to set the processing state.
+    logs.backfillComplete(newSucessCount, newErrorCount);
+    if (newErrorCount === 0) {
       await runtime.setProcessingState(
         "PROCESSING_COMPLETE",
-        "No processing requested.",
+        `${newSucessCount} users added (or already existed) in Mailchimp audience ${config.mailchimpAudienceId}.`,
       );
-      return;
+    } else if (newErrorCount > 0 && newSucessCount > 0) {
+      await runtime.setProcessingState(
+        "PROCESSING_WARNING",
+        `${newSucessCount} users added (or already existed) in Mailchimp audience ${config.mailchimpAudienceId}, ` +
+          `failed to add ${newErrorCount} users.  Check function logs for more information.`,
+      );
     }
-    const { nextPageToken } = data;
-    const pastSuccessCount = parseInt(data.successCount, 10) ?? 0;
-    const pastErrorCount = parseInt(data.errorCount, 10) ?? 0;
-
-    const res = await getAuth().listUsers(100, nextPageToken);
-    const mailchimpPromises = res.users.map(async (user) => {
-      try {
-        await addUser(user);
-      } catch (err) {
-        if (err.title === "Member Exists") {
-          logs.userAlreadyInAudience(user.uid, config.mailchimpAudienceId);
-          // Don't throw error if the memeber already exists.
-        } else {
-          logs.errorAddUser(err);
-          // For other errors, rethrow them so that we can report
-          //  the total number at the end of the lifecycle event.
-          throw err;
-        }
-      }
-    });
-
-    const results = await Promise.allSettled(mailchimpPromises);
-    const newSucessCount = pastSuccessCount + results.filter((p) => p.status === "fulfilled").length;
-    const newErrorCount = pastErrorCount + results.filter((p) => p.status === "rejected").length;
-    if (res.pageToken) {
-      // If there is a pageToken, we have more users to add, so we enqueue another task.
-      const queue = getFunctions().taskQueue(
-        "addExistingUsersToList",
-        process.env.EXT_INSTANCE_ID,
+    if (newErrorCount > 0 && newSucessCount === 0) {
+      await runtime.setProcessingState(
+        "PROCESSING_FAILED",
+        `Failed to add ${newErrorCount} users to ${config.mailchimpAudienceId}. Check function logs for more information.`,
       );
-      await queue.enqueue({
-        nextPageToken: res.pageToken,
-        successCount: newSucessCount,
-        errorCount: newErrorCount,
-      });
+    }
+  }
+});
+
+/**
+ * @typedef {object} BackfillTask
+ * @property {"SYNC_AUTH"|"SYNC_FIRESTORE"} type
+ * @property {import("./read-config").BackfillConfigSource} sources
+ * @property {string} [collectionPath]
+ */
+/**
+ * @typedef {object} BackfillTaskData
+ * @property {BackfillTask} task
+ * @property {BackfillTask[]} remainingTasks
+ * @property {object} taskState
+ */
+
+/**
+ *
+ * @param {BackfillTaskData} data
+ */
+async function enqueueBackfillTask(data) {
+  const queue = getFunctions().taskQueue("executeBackfillTask", process.env.EXT_INSTANCE_ID);
+  await queue.enqueue(data);
+}
+
+/**
+ *
+ * @param {import("./read-config").BackfillConfig} backfillConfig
+ * @returns {BackfillTask[]} tasks
+ */
+function gatherBackfillTasksToRun(backfillConfig) {
+  const configSources = backfillConfig.sources ?? [];
+
+  /** @type {BackfillTask[]} */
+  const tasksToRun = [];
+  if (configSources.includes("AUTH")) {
+    tasksToRun.push({
+      type: "SYNC_AUTH",
+      sources: ["AUTH"],
+    });
+  }
+
+  const remainingSourcesToPaths = {
+    MERGE_FIELDS: config.mailchimpMergeFieldWatchPath,
+    MEMBER_TAGS: config.mailchimpMemberTagsWatchPath,
+    MEMBER_EVENTS: config.mailchimpMemberEventsWatchPath,
+  };
+
+  const pathToSources = configSources.reduce((allPathsToSources, source) => {
+    if (Object.hasOwn(remainingSourcesToPaths, source)) {
+      const collectionPath = remainingSourcesToPaths[source];
+      if (Object.hasOwn(allPathsToSources, collectionPath)) {
+        allPathsToSources[collectionPath].push(source);
+      } else {
+        // eslint-disable-next-line no-param-reassign
+        allPathsToSources[collectionPath] = [source];
+      }
+    }
+    return allPathsToSources;
+  }, {});
+
+  Object.entries(pathToSources).forEach(([collectionPath, sources]) => {
+    tasksToRun.push({
+      type: "SYNC_FIRESTORE",
+      sources,
+      collectionPath,
+    });
+  });
+
+  return tasksToRun;
+}
+
+// TODO: Need to return task status (pass/fail) and new task state.
+// eslint-disable-next-line no-unused-vars
+async function syncAuth(task, taskState) {
+  return true;
+}
+
+// eslint-disable-next-line no-unused-vars
+async function syncFirestore(task, taskState) {
+  return true;
+}
+
+exports.executeBackfillTask = tasks
+  .taskQueue()
+  .onDispatch(async (/** @type {BackfillTaskData} */ data) => {
+    const runtime = getExtensions().runtime();
+    // eslint-disable-next-line no-console
+    console.log({ data });
+    const { task, taskState, remainingTasks } = data;
+    let taskSucceeded = false;
+
+    switch (task.type) {
+      case "SYNC_AUTH":
+        taskSucceeded = await syncAuth(task, taskState);
+        break;
+      case "SYNC_FIRESTORE":
+        taskSucceeded = await syncFirestore(task, taskState);
+        break;
+      default:
+        logs.unrecognizedTaskType(task.type);
+        break;
+    }
+
+    if (taskSucceeded) {
+      logs.taskSucceeded(task.type, {});
+      const nextTask = remainingTasks.shift();
+      if (nextTask) {
+        await enqueueBackfillTask({
+          task: nextTask,
+          remainingTasks,
+        });
+      } else {
+        await runtime.setProcessingState("PROCESSING_COMPLETE", `Backfill process completed!.`);
+      }
     } else {
-      // The backfill is complete, now we need to set the processing state.
-      logs.backfillComplete(newSucessCount, newErrorCount);
-      if (newErrorCount === 0) {
-        await runtime.setProcessingState(
-          "PROCESSING_COMPLETE",
-          `${newSucessCount} users added (or already existed) in Mailchimp audience ${config.mailchimpAudienceId}.`,
-        );
-      } else if (newErrorCount > 0 && newSucessCount > 0) {
+      const canRetry = false; // TODO: Add to config the retry level
+      if (canRetry) {
+        logs.taskAttemptFailed(task.type, {});
         await runtime.setProcessingState(
           "PROCESSING_WARNING",
-          `${newSucessCount} users added (or already existed) in Mailchimp audience ${config.mailchimpAudienceId}, `
-          + `failed to add ${newErrorCount} users.  Check function logs for more information.`,
+          `Task ${task.type} attempt failed and will be retried`,
         );
-      }
-      if (newErrorCount > 0 && newSucessCount === 0) {
+        await enqueueBackfillTask({
+          task,
+          remainingTasks,
+          taskState,
+        });
+      } else {
+        logs.taskFailed(task.type, {});
         await runtime.setProcessingState(
           "PROCESSING_FAILED",
-          `Failed to add ${newErrorCount} users to ${config.mailchimpAudienceId}. Check function logs for more information.`,
+          `Task ${task.type} failed and cannot be retried. Check function logs for more information.`,
         );
       }
     }
   });
+
+/**
+ *
+ * @param {import("./read-config").BackfillConfigEvent} trigger
+ * @returns
+ */
+async function performBackfill(trigger) {
+  const runtime = getExtensions().runtime();
+  if (!config.backfillConfig?.events?.includes(trigger)) {
+    await runtime.setProcessingState("PROCESSING_COMPLETE", "No processing requested.");
+    return;
+  }
+  const backfillTasks = gatherBackfillTasksToRun(config.backfillConfig);
+  if (backfillTasks.length) {
+    const firstTask = backfillTasks.shift();
+    await enqueueBackfillTask({ task: firstTask, remainingTasks: backfillTasks });
+  }
+}
+
+exports.performTasksOnInstall = tasks.taskQueue().onDispatch(async () => {
+  await performBackfill("INSTALL");
+});
+exports.performTasksOnUpdate = tasks.taskQueue().onDispatch(async () => {
+  await performBackfill("UPDATE");
+});
+exports.performTasksOnConfigure = tasks.taskQueue().onDispatch(async () => {
+  await performBackfill("CONFIGURE");
+});
 
 exports.processConfig = processConfig;
