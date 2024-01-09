@@ -97,6 +97,9 @@ module.exports = {
   taskSucceeded: (taskType, data) => {
     logger.info(`Task ${taskType} succeeded with data: `, data);
   },
+  taskContinued: (taskType, data) => {
+    logger.info(`Task ${taskType} continued with data: `, data);
+  },
   taskAttemptFailed: (taskType, data) => {
     logger.warn(`Task ${taskType} attempt failed and will be retried: `, data);
   },
