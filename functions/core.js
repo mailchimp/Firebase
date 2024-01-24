@@ -317,11 +317,79 @@ async function syncMemberTags(newDoc, prevDoc) {
   }
 }
 
+/**
+ * Sync merge fields between Firestore and Mailchimp according to changes
+ * between the provided documents.
+ * @param {FirebaseFirestore.DocumentData | undefined} newDoc
+ * @param {FirebaseFirestore.DocumentData | undefined} prevDoc
+ */
+async function syncMemberEvents(newDoc, prevDoc) {
+  // Get the configuration settings for mailchimp custom events as is defined in extension.yml
+  const eventsConfig = config.mailchimpMemberEvents;
+
+  // Validate proper configuration settings were provided
+  if (!mailchimp) {
+    logs.mailchimpNotInitialized();
+    return;
+  }
+  if (!eventsConfig.memberEvents) {
+    logger.log(`A property named 'memberEvents' is required`);
+    return;
+  }
+  if (!Array.isArray(eventsConfig.memberEvents)) {
+    logger.log(`'memberEvents' property must be an array`);
+    return;
+  }
+
+  // Retrieves subscriber tags before/after write event
+  const getMemberEventsFromSnapshot = (snapshot) =>
+    eventsConfig.memberEvents.reduce((acc, memberEventConfiguration) => {
+      const events = resolveValueFromDocumentPath(snapshot, memberEventConfiguration);
+      if (Array.isArray(events) && events && events.length) {
+        return [...acc, ...events];
+      }
+      if (events) {
+        return acc.concat(events);
+      }
+      return acc;
+    }, []);
+
+  // Get all member events prior to write event
+  const prevEvents = prevDoc ? getMemberEventsFromSnapshot(prevDoc) : [];
+  // Get all member events after write event
+  const newEvents = newDoc ? getMemberEventsFromSnapshot(newDoc) : [];
+  // Find the intersection of both collections
+  const memberEvents = newEvents.filter((e) => !prevEvents.includes(e));
+
+  // Compute the mailchimp subscriber email hash
+  const subscriberHash = subscriberHasher(
+    getSubscriberEmail(prevDoc, newDoc, eventsConfig.subscriberEmail),
+  );
+
+  // Invoke mailchimp API with new events
+  if (memberEvents?.length) {
+    const requests = memberEvents.reduce((acc, name) => {
+      acc.push(
+        retry(
+          () =>
+            mailchimp.lists.createListMemberEvent(config.mailchimpAudienceId, subscriberHash, {
+              name,
+            }),
+          errorFilterFor404,
+        ),
+      );
+      return acc;
+    }, []);
+    await Promise.all(requests);
+  }
+}
+
 module.exports = {
   config,
   processConfig,
   syncMemberTags,
   syncMergeFields,
+  syncMemberEvents,
   addUser,
   subscriberHasher,
   retry,
